@@ -1,23 +1,38 @@
 CC = cc
 CFLAGS = -O2 -g -Wall -Wextra -Wpedantic -std=c11
-CPPFLAGS = -Iconnector/include
-
-SRCS = connector/src/connector.c \
-       connector/src/cli.c \
-       connector/src/auth.c \
-       connector/src/amqp_client.c
+CPPFLAGS = -Iconnector/include -Iconsumer/include
 
 BUILD_DIR = build
-TARGET = $(BUILD_DIR)/connector
 
-LIBS = -lslink -lrabbitmq
+CONNECTOR_SRCS = connector/src/connector.c \
+                 connector/src/cli.c \
+                 connector/src/auth.c \
+                 connector/src/amqp_client.c
+CONNECTOR_TARGET = $(BUILD_DIR)/connector
+CONNECTOR_LIBS = -lslink -lrabbitmq
 
-.PHONY: all clean
+CONSUMER_SRCS = consumer/src/consumer.c \
+                consumer/src/cli.c \
+                consumer/src/mseed.c \
+                consumer/src/pg_client.c
+CONSUMER_TARGET = $(BUILD_DIR)/consumer
+CONSUMER_LIBS = -lrabbitmq -lmseed -lpq
 
-all: $(TARGET)
+TARGETS = $(CONNECTOR_TARGET) $(CONSUMER_TARGET)
 
-$(TARGET): $(SRCS) | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(SRCS) $(LIBS) -o $@
+.PHONY: all clean connector consumer
+
+all: $(TARGETS)
+
+connector: $(CONNECTOR_TARGET)
+
+consumer: $(CONSUMER_TARGET)
+
+$(CONNECTOR_TARGET): $(CONNECTOR_SRCS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(CONNECTOR_SRCS) $(CONNECTOR_LIBS) -o $@
+
+$(CONSUMER_TARGET): $(CONSUMER_SRCS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(CONSUMER_SRCS) $(CONSUMER_LIBS) -o $@
 
 $(BUILD_DIR):
 	mkdir -p $@
