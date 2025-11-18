@@ -1,7 +1,12 @@
 CC = cc
 CFLAGS = -O2 -g -Wall -Wextra -Wpedantic -std=c11
+CPPFLAGS = -Iconnector/include
 
-SRC = connector/src/connector.c
+SRCS = connector/src/connector.c \
+       connector/src/cli.c \
+       connector/src/auth.c \
+       connector/src/amqp_client.c
+
 BUILD_DIR = build
 TARGET = $(BUILD_DIR)/connector
 
@@ -11,8 +16,8 @@ LIBS = -lslink -lrabbitmq
 
 all: $(TARGET)
 
-$(TARGET): $(SRC) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $< $(LIBS) -o $@
+$(TARGET): $(SRCS) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(SRCS) $(LIBS) -o $@
 
 $(BUILD_DIR):
 	mkdir -p $@
