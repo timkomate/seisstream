@@ -4,34 +4,30 @@ Simple C utilities for streaming MiniSEED over AMQP and ingesting into Timescale
 
 ## Architecture
 ```mermaid
-flowchart LR
-  subgraph SeedLink Server
+flowchart TB
+  subgraph SeedLink Servers
     SL1[SeedLink Server #1]:::src
     SL2[SeedLink Server #2]:::src
     SL3[SeedLink Server #3]:::src
   end
 
-  SL1 -->|SeedLink/MiniSEED| CON1[Connector #1
-  libslink → AMQP]
-  SL2 -->|SeedLink/MiniSEED| CON2[Connector #2
-  libslink → AMQP]
-  SL3 -->|SeedLink/MiniSEED| CON3[Connector #3
-  libslink → AMQP]
+  SL1 -->|SeedLink/MiniSEED| CON1[Connector #1<br/>libslink → AMQP]
+  SL2 -->|SeedLink/MiniSEED| CON2[Connector #2<br/>libslink → AMQP]
+  SL3 -->|SeedLink/MiniSEED| CON3[Connector #3<br/>libslink → AMQP]
 
-  CON1 -->|AMQP publish| MQ[(AMQP Broker\nRabbitMQ)]
+  CON1 -->|AMQP publish| MQ[(AMQP Broker<br/>RabbitMQ)]
   CON2 -->|AMQP publish| MQ
   CON3 -->|AMQP publish| MQ
 
-  MQ -->|AMQP consume| CNS1[Consumer #1\nAMQP → libmseed]
-  MQ -->|AMQP consume| CNS2[Consumer #2\nAMQP → libmseed]
-  MQ -->|AMQP consume| CNS3[Consumer #3\nAMQP → libmseed]
+  MQ -->|AMQP consume| CNS1[Consumer #1<br/>AMQP → libmseed]
+  MQ -->|AMQP consume| CNS2[Consumer #2<br/>AMQP → libmseed]
+  MQ -->|AMQP consume| CNS3[Consumer #3<br/>AMQP → libmseed]
 
   CNS1 -->|bulk load| PG[(Timescale DB)]
   CNS2 -->|bulk load| PG
   CNS3 -->|bulk load| PG
 
-  PG -->|SQL queries| GRAF[Grafana
-  Dashboards/Alerts]
+  PG -->|SQL queries| GRAF[Grafana<br/>Dashboards/Alerts]
 
   classDef src fill:#eef,stroke:#557;
 ```
@@ -46,8 +42,8 @@ Prerequisites: `libslink`, `librabbitmq`, `libmseed`, `libpq` headers/libs avail
 
 ```sh
 make            # builds connector and consumer into ./build
-make connector  # build only connector
-make consumer   # build only consumer
+make connector  # builds only connector
+make consumer   # builds only consumer
 ```
 
 ## Connector usage (SeedLink → AMQP)
