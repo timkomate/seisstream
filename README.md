@@ -4,6 +4,7 @@ Simple C utilities for streaming MiniSEED over AMQP and ingesting into Timescale
 
 ## Architecture
 ```mermaid
+%%{init: {"theme":"neutral","themeVariables":{"fontSize":"18px","primaryTextColor":"#000","lineColor":"#000"}}}%%
 flowchart TB
   subgraph SeedLink Servers
     SL1[SeedLink Server #1]:::src
@@ -30,6 +31,7 @@ flowchart TB
   PG -->|SQL queries| GRAF[Grafana<br/>Dashboards/Alerts]
 
   classDef src fill:#eef,stroke:#557;
+
 ```
 
 
