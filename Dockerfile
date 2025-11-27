@@ -1,0 +1,47 @@
+#syntax=docker/dockerfile:1
+FROM debian:bookworm-slim AS build
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        git \
+        make \
+        build-essential \
+        pkg-config \
+        ca-certificates \
+        librabbitmq-dev \
+        libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/EarthScope/libslink.git && \
+    cd libslink && \
+    make install
+
+RUN git clone https://github.com/EarthScope/libmseed.git && \
+    cd libmseed && \
+    make install
+
+WORKDIR /app
+COPY . .
+RUN make
+
+FROM debian:bookworm-slim AS connector
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends librabbitmq4 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /usr/local/lib/libslink* /usr/lib/
+COPY --from=build /app/build/connector /usr/local/bin/connector
+COPY streamlist.conf /app/streamlist.conf
+ENV PATH="/usr/local/bin:${PATH}" \
+    STREAMLIST_FILE=/app/streamlist.conf
+CMD ["connector", "-h"]
+
+FROM debian:bookworm-slim AS consumer
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends librabbitmq4 libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /usr/local/lib/libmseed* /usr/lib/
+COPY --from=build /app/build/consumer /usr/local/bin/consumer
+ENV PATH="/usr/local/bin:${PATH}"
+CMD ["consumer", "--help"]
