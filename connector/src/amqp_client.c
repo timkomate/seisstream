@@ -7,6 +7,7 @@ amqp_connect (const AmqpConfig *config)
 {
   amqp_connection_state_t conn = amqp_new_connection ();
   amqp_socket_t *socket = NULL;
+  int declare_exchange = (config->exchange && *config->exchange);
 
   if (!conn)
   {
@@ -50,10 +51,26 @@ amqp_connect (const AmqpConfig *config)
     return NULL;
   }
 
-  sl_log (0, 1, "Connected to AMQP %s:%d, exchange '%s', routing key '%s'\n",
+  if (declare_exchange)
+  {
+    amqp_exchange_declare (conn, AMQP_CHANNEL,
+                           amqp_cstring_bytes (config->exchange),
+                           amqp_cstring_bytes ("topic"),
+                           0, 1, 0, 0, amqp_empty_table);
+
+    if (amqp_check_rpc_reply ("Declaring AMQP exchange",
+                              amqp_get_rpc_reply (conn)) != 0)
+    {
+      amqp_destroy_connection (conn);
+      return NULL;
+    }
+
+    sl_log (0, 1, "Declared AMQP exchange '%s'\n", config->exchange);
+  }
+
+  sl_log (0, 1, "Connected to AMQP %s:%d, exchange '%s'\n",
           config->host, config->port,
-          config->exchange ? config->exchange : "",
-          config->routing_key ? config->routing_key : "");
+          config->exchange ? config->exchange : "");
 
   return conn;
 }
@@ -74,19 +91,25 @@ amqp_disconnect (amqp_connection_state_t conn)
 
 int
 amqp_publish_payload (amqp_connection_state_t conn, const AmqpConfig *config,
-                      const char *payload, uint32_t payloadlen)
+                      const char *payload, uint32_t payloadlen, char *sourceid)
 {
   amqp_bytes_t body = {.len = payloadlen, .bytes = (void *)payload};
   amqp_basic_properties_t props;
+  const char *routing_key = (config->routing_key && *config->routing_key)
+                            ? config->routing_key
+                            : sourceid;
   int rc;
 
   memset (&props, 0, sizeof (props));
   props._flags |= AMQP_BASIC_CONTENT_TYPE_FLAG;
   props.content_type = amqp_cstring_bytes ("application/octet-stream");
 
+  sl_log (1, 1, "Publishing with routing key '%s'\n",
+          routing_key ? routing_key : "");
+
   rc = amqp_basic_publish (conn, AMQP_CHANNEL,
                            amqp_cstring_bytes (config->exchange ? config->exchange : ""),
-                           amqp_cstring_bytes (config->routing_key ? config->routing_key : ""),
+                           amqp_cstring_bytes (routing_key),
                            0, 0, &props, body);
 
   if (rc != AMQP_STATUS_OK)

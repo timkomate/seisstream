@@ -30,6 +30,7 @@
 #include "auth.h"
 #include "cli.h"
 #include "connector.h"
+#include "mseedformat.h"
 
 AmqpConfig amqp_cfg = {
   .host = "127.0.0.1",
@@ -38,7 +39,7 @@ AmqpConfig amqp_cfg = {
   .password = "guest",
   .vhost = "/",
   .exchange = "",
-  .routing_key = "binq"
+  .routing_key = NULL
 };
 
 short int verbose = 0;
@@ -48,6 +49,7 @@ char *statefile = NULL;
 static void packet_handler (SLCD *slconn, const SLpacketinfo *packetinfo,
                             const char *payload, uint32_t payloadlen,
                             amqp_connection_state_t conn);
+static void process_string (char *s);
 
 int
 main (int argc, char **argv)
@@ -59,6 +61,7 @@ main (int argc, char **argv)
   char *plbuffer = NULL;
   uint32_t plbuffersize = DEFAULT_PAYLOAD_BUFFER;
   int status = 0;
+  char sourceid[64] = {0};
 
   /* Allocate and initialize a new connection description */
   slconn = sl_initslcd (PACKAGE, VERSION);
@@ -138,6 +141,92 @@ main (int argc, char **argv)
   free (plbuffer);
 } /* End of main() */
 
+int
+get_source_id (const SLlog *log, const SLpacketinfo *packetinfo,
+               const char *plbuffer, uint32_t plbuffer_size,
+               char *sourceid, size_t sourceid_size)
+{
+  /* This whole function is a horrible hack for now, but I did not want to read through the MS3 documentation...*/
+  if (!packetinfo || !plbuffer || plbuffer_size == 0)
+  {
+    sl_log_rl (log, 2, 1, "%s(): invalid input parameters\n", __func__);
+    return -1;
+  }
+
+  /* Parse requested details from miniSEED v2 */
+  if (packetinfo->payloadformat == SLPAYLOAD_MSEED2)
+  {
+    if (packetinfo->payloadlength < 48)
+    {
+      sl_log_rl (log, 2, 1, "%s(): payload too short for miniSEEDv2\n", __func__);
+      return -1;
+    }
+
+    if (sourceid)
+    {
+      char net[3]  = {0};
+      char sta[6]  = {0};
+      char loc[3]  = {0};
+      char chan[6] = {0};
+
+      sl_strncpclean (net, pMS2FSDH_NETWORK (plbuffer), 2);
+      sl_strncpclean (sta, pMS2FSDH_STATION (plbuffer), 5);
+      sl_strncpclean (loc, pMS2FSDH_LOCATION (plbuffer), 2);
+
+      /* Map 3 channel codes to BAND_SOURCE_POSITION */
+      chan[0] = *pMS2FSDH_CHANNEL (plbuffer);
+      chan[1] = '_';
+      chan[2] = *(pMS2FSDH_CHANNEL (plbuffer) + 1);
+      chan[3] = '_';
+      chan[4] = *(pMS2FSDH_CHANNEL (plbuffer) + 2);
+
+      snprintf (sourceid, sourceid_size, "FDSN:%s_%s_%s_%s",
+                net, sta, loc, chan);
+    }
+  }
+
+  /* Parse requested details from miniSEED v3 */
+  else if (packetinfo->payloadformat == SLPAYLOAD_MSEED3)
+  {
+    if (packetinfo->payloadlength < MS3FSDH_LENGTH + *pMS3FSDH_SIDLENGTH(plbuffer))
+    {
+      sl_log_rl (log, 2, 1, "%s(): payload too short for miniSEEDv3\n", __func__);
+      return -1;
+    }
+
+    if (sourceid)
+    {
+      snprintf (sourceid, sourceid_size, "%.*s",
+                (int)*pMS3FSDH_SIDLENGTH (plbuffer),
+                pMS3FSDH_SID (plbuffer));
+    }
+  }
+  else
+  {
+    sl_log_rl (log, 2, 1, "%s(): unsupported payload format: %c\n",
+               __func__, packetinfo->payloadformat);
+    return -1;
+  }
+  process_string(sourceid);
+  return 0;
+} /* End of sl_payload_info() */
+
+static void
+process_string (char *s)
+{
+    const char *prefix = "FDSN:";
+    size_t len = strlen(prefix);
+
+    if (strncmp(s, prefix, len) == 0) {
+        memmove(s, s + len, strlen(s + len) + 1);
+    }
+
+    for (char *p = s; *p; p++) {
+        if (*p == '_')
+            *p = '.';
+    }
+}
+
 /***************************************************************************
  * packet_handler():
  * Process a received packet based on packet type.
@@ -152,6 +241,7 @@ packet_handler (SLCD *slconn, const SLpacketinfo *packetinfo,
   double secfrac; /* Fractional part of epoch time */
   time_t itime;   /* Integer part of epoch time */
   char timestamp[30] = {0};
+  char sourceid[64] = {0};
   struct tm *timep;
   int printed;
 
@@ -185,7 +275,13 @@ packet_handler (SLCD *slconn, const SLpacketinfo *packetinfo,
     sl_log (1, 1, "%s() Error generating payload summary\n", __func__);
   }
 
-  if (amqp_publish_payload (conn, &amqp_cfg, payload, payloadlength) != 0)
+  if (get_source_id (slconn->log, packetinfo, payload, payloadlength, sourceid,
+                     sizeof (sourceid)) < 0)
+  {
+    sl_log (1, 0, "%s() Error getting source ID\n", __func__);
+  }
+
+  if (amqp_publish_payload (conn, &amqp_cfg, payload, payloadlength, sourceid) != 0)
   {
     sl_log (2, 0, "%s() Failed to publish packet with seq %" PRIu64 "\n",
             __func__, packetinfo->seqnum);

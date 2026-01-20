@@ -111,7 +111,9 @@ parameter_proc (SLCD *slconn, int argcount, char **argvec)
     else if (strcmp (argvec[optind], "--amqp-routing-key") == 0)
     {
       const char *option = argvec[optind];
-      amqp_cfg.routing_key = require_argument (option, argcount, argvec, &optind);
+      const char *value = require_argument (option, argcount, argvec, &optind);
+      /* Empty string means: use per-packet source ID as routing key */
+      amqp_cfg.routing_key = (*value == '\0') ? NULL : value;
     }
     else if (strncmp (argvec[optind], "-", 1) == 0)
     {
@@ -215,7 +217,7 @@ usage (void)
            " --amqp-password pass AMQP password (default guest)\n"
            " --amqp-vhost vhost   AMQP vhost (default /)\n"
            " --amqp-exchange exch AMQP exchange to publish to (default empty)\n"
-           " --amqp-routing-key k AMQP routing key / queue (default binq)\n"
+           " --amqp-routing-key k AMQP routing key / queue (default binq; pass empty \"\" to use source ID)\n"
            "\n"
            " [host][:port]        Address of the SeedLink server in host:port format\n"
            "                        if host is omitted (i.e. ':18000'), localhost is assumed\n"
