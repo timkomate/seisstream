@@ -22,6 +22,10 @@ parse_args(int argc, char **argv, ConsumerConfig *config)
       config->pass = argv[++i];
     else if (strcmp(argv[i], "-v") == 0 && i + 1 < argc)
       config->vhost = argv[++i];
+    else if (strcmp(argv[i], "--amqp-exchange") == 0 && i + 1 < argc)
+      config->exchange = argv[++i];
+    else if (strcmp(argv[i], "--amqp-binding-key") == 0 && i + 1 < argc)
+      config->binding_key = argv[++i];
     else if (strcmp(argv[i], "-q") == 0 && i + 1 < argc)
       config->queue = argv[++i];
     else if (strcmp(argv[i], "--prefetch") == 0 && i + 1 < argc)
@@ -58,6 +62,8 @@ usage(const char *progname)
           "  -u <user>        (default guest)\n"
           "  -P <pass>        (default guest)\n"
           "  -v <vhost>       (default /)\n"
+          "  --amqp-exchange  Exchange to consume from (default empty = AMQP default)\n"
+          "  --amqp-binding-key Key to bind queue when using an exchange (default queue name)\n"
           "  -q <queue>       (default binq)\n"
           "  --prefetch <n>   (default 10)\n"
           "  --verbose        (libmseed verbose parsing)\n"

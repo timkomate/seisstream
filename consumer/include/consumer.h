@@ -10,7 +10,9 @@ typedef struct {
   const char *user;
   const char *pass;
   const char *vhost;
+  const char *exchange;
   const char *queue;
+  const char *binding_key;
   int         prefetch;
   int         verbose;
   const char *pg_host;

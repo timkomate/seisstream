@@ -51,7 +51,9 @@ main(int argc, char **argv)
     .user = "guest",
     .pass = "guest",
     .vhost = "/",
+    .exchange = "",
     .queue = "binq",
+    .binding_key = "binq",
     .prefetch = 10,
     .verbose = 0,
     .pg_host = "localhost",
@@ -84,7 +86,7 @@ main(int argc, char **argv)
                    config.pg_dbname ? config.pg_dbname : "",
                    config.pg_user ? config.pg_user : "",
                    config.pg_password ? config.pg_password : "",
-                   config.pg_host ? config.pg_host : "",
+                   config.pg_host ? config.pg_host : "192.168.0.106",
                    config.pg_port);
   if (n < 0 || n >= (int)sizeof pg_conninfo)
   {
@@ -142,6 +144,21 @@ main(int argc, char **argv)
         }
         else
         {
+          int declare_exchange = (config.exchange && *config.exchange);
+
+          if (declare_exchange)
+          {
+            amqp_exchange_declare(conn, 1,
+                                  amqp_cstring_bytes(config.exchange),
+                                  amqp_cstring_bytes("topic"),
+                                  0, 1, 0, 0, amqp_empty_table);
+            r = amqp_get_rpc_reply(conn);
+            if (r.reply_type != AMQP_RESPONSE_NORMAL)
+            {
+              fprintf(stderr, "Exchange declare failed: reply_type=%d\n", r.reply_type);
+            }
+          }
+
           amqp_queue_declare_ok_t *qok = amqp_queue_declare(conn, 1,
               amqp_cstring_bytes(config.queue), 0, 0, 0, 0, amqp_empty_table);
           r = amqp_get_rpc_reply(conn);
@@ -151,6 +168,20 @@ main(int argc, char **argv)
           }
           else
           {
+            if (declare_exchange)
+            {
+              amqp_queue_bind(conn, 1,
+                              amqp_cstring_bytes(config.queue),
+                              amqp_cstring_bytes(config.exchange),
+                              amqp_cstring_bytes(config.binding_key),
+                              amqp_empty_table);
+              r = amqp_get_rpc_reply(conn);
+              if (r.reply_type != AMQP_RESPONSE_NORMAL)
+              {
+                fprintf(stderr, "Queue bind failed: reply_type=%d\n", r.reply_type);
+              }
+            }
+
             amqp_basic_consume(conn, 1, amqp_cstring_bytes(config.queue),
                                amqp_empty_bytes, 0, 0, 0, amqp_empty_table);
             r = amqp_get_rpc_reply(conn);
