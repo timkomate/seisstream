@@ -1,0 +1,101 @@
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: seisstream-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    container_name: seisstream-timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${PGUSER:-seis}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-seis}
+      POSTGRES_DB: ${PGDATABASE:-seismic}
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - timescale-data:/var/lib/postgresql/data
+
+  connector:
+    build:
+      context: .
+      target: connector
+    container_name: seisstream-connector
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./streamlist.conf:/app/streamlist.conf:ro
+    command:
+      - connector
+      - -l
+      - /app/streamlist.conf
+      - --amqp-host
+      - rabbitmq
+      - --amqp-user
+      - ${RABBITMQ_USER:-guest}
+      - --amqp-password
+      - ${RABBITMQ_PASS:-guest}
+      - --amqp-exchange
+      - ${AMQP_EXCHANGE:-stations}
+      - ${SEEDLINK_HOST:-geofon.gfz-potsdam.de:18000}
+
+  consumer:
+    build:
+      context: .
+      target: consumer
+    container_name: seisstream-consumer
+    depends_on:
+      - rabbitmq
+      - timescaledb
+    command:
+      - consumer
+      - --amqp-host
+      - rabbitmq
+      - --amqp-user
+      - ${RABBITMQ_USER:-guest}
+      - --amqp-password
+      - ${RABBITMQ_PASS:-guest}
+      - --amqp-exchange
+      - ${AMQP_EXCHANGE:-stations}
+      - --amqp-binding-key
+      - ${AMQP_BINDING_KEY:-#}
+      - --pg-host
+      - timescaledb
+      - --pg-user
+      - ${PGUSER:-seis}
+      - --pg-password
+      - ${PGPASSWORD:-seis}
+      - --pg-db
+      - ${PGDATABASE:-seismic}
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: seisstream-grafana
+    depends_on:
+      - timescaledb
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      PGUSER: ${PGUSER:-seis}
+      PGPASSWORD: ${PGPASSWORD:-seis}
+      PGDATABASE: ${PGDATABASE:-seismic}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  rabbitmq-data:
+  timescale-data:
+  grafana-data:
