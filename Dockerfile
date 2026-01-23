@@ -45,3 +45,17 @@ COPY --from=build /usr/local/lib/libmseed* /usr/lib/
 COPY --from=build /app/build/consumer /usr/local/bin/consumer
 ENV PATH="/usr/local/bin:${PATH}"
 CMD ["consumer", "--help"]
+
+FROM python:3.11-slim AS publisher
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY tools/publish_mseed/requirements.txt /app/tools/publish_mseed/requirements.txt
+RUN pip install --no-cache-dir -r /app/tools/publish_mseed/requirements.txt
+
+COPY tools/publish_mseed /app/tools/publish_mseed
+
+CMD ["python", "tools/publish_mseed/publish_mseed.py", "--help"]
+

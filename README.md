@@ -4,7 +4,15 @@ Simple C utilities for streaming MiniSEED over AMQP and ingesting into Timescale
 
 ## Architecture
 ```mermaid
-%%{init: {"theme":"neutral","themeVariables":{"fontSize":"18px","primaryTextColor":"#000","lineColor":"#000"}}}%%
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#ffffff",
+    "primaryTextColor": "#000000",
+    "lineColor": "#000000",
+    "fontSize": "18px"
+  }
+}}%%
 flowchart TB
   subgraph SeedLink Servers
     SL1[SeedLink Server #1]:::src
@@ -23,21 +31,23 @@ flowchart TB
   MQ -->|AMQP consume| CNS1[Consumer #1<br/>AMQP → libmseed]
   MQ -->|AMQP consume| CNS2[Consumer #2<br/>AMQP → libmseed]
   MQ -->|AMQP consume| CNS3[Consumer #3<br/>AMQP → libmseed]
+  MQ -->|AMQP consume| DET[Detector<br/>AMQP → STA/LTA]
 
   CNS1 -->|bulk load| PG[(Timescale DB)]
   CNS2 -->|bulk load| PG
   CNS3 -->|bulk load| PG
 
   PG -->|SQL queries| GRAF[Grafana<br/>Dashboards/Alerts]
+  DET -->|Triggers| GRAF
 
   classDef src fill:#eef,stroke:#557;
-
 ```
 
 
 ## Components
 - `connector/`: SeedLink client that forwards packets to an AMQP (RabbitMQ) broker.
 - `consumer/`: AMQP consumer that parses MiniSEED (libmseed) and bulk-loads samples into TimescaleDB.
+- `detector/`: Python AMQP consumer that decodes miniSEED with `pymseed`, keeps a rolling in-memory buffer per source id, and calls a (user-implemented) STA/LTA detector hook.
 
 ## Build
 Prerequisites: `libslink`, `librabbitmq`, `libmseed`, `libpq` headers/libs available to the compiler.
@@ -46,6 +56,21 @@ Prerequisites: `libslink`, `librabbitmq`, `libmseed`, `libpq` headers/libs avail
 make            # builds connector and consumer into ./build
 make connector  # builds only connector
 make consumer   # builds only consumer
+```
+
+Python detector prerequisites: `pika`, `pymseed`, `numpy` (available in the current dev environment). Run with `python3 detector/main.py ...`.
+
+## Docker
+```sh
+# Build the connector-only image
+docker build --target connector -t seisstream-connector .
+# Build the consumer-only image
+docker build --target consumer -t seisstream-consumer .
+
+docker run --rm -v $(pwd)/streamlist.conf:/app/streamlist.conf:ro \
+  seisstream-connector --amqp-host rabbitmq.example --amqp-user user --amqp-password secret host:18000
+# Consumer example
+docker run --rm seisstream-consumer --pg-host db --pg-user admin --pg-password my-secret-pw
 ```
 
 ## Connector usage (SeedLink → AMQP)
@@ -72,6 +97,7 @@ make consumer   # builds only consumer
   --amqp-exchange ex AMQP exchange (default empty)
   --amqp-routing-key k AMQP routing key/queue (default binq)
 ```
+
 ## Consumer usage (AMQP → TimescaleDB)
 ```sh
 ./build/consumer [opts]
@@ -89,3 +115,22 @@ make consumer   # builds only consumer
   --pg-password <pw>  (default my-secret-pw)
   --pg-db <name>      (default seismic)
 ```
+
+## Detector usage (AMQP → in-memory STA/LTA)
+The detector consumes miniSEED from AMQP, decodes to NumPy, maintains a bounded buffer per source id, and invokes `detect_sta_lta(...)` (stub you can fill with your math). Messages are acked only after successful decode; failures are nacked without requeue.
+
+```sh
+python3 detector/main.py \
+  --host rabbitmq.local --port 5672 --user user --password secret --vhost / \
+  --exchange stations \
+  --binding-key GE.# --binding-key XX.* \
+  --prefetch 50 \
+  --buffer-seconds 300 \
+  --log-level INFO
+```
+- Leave `--queue` empty to use an exclusive, auto-delete queue; provide a name to reuse a shared durable queue.
+- `--binding-key` is repeatable (AMQP topic syntax). Default is `#` (everything).
+- `--prefetch` sets AMQP QoS so only that many unacked messages are delivered at a time.
+- `--buffer-seconds` bounds how much recent data is kept per source id for your STA/LTA windowing.
+
+Implement your STA/LTA logic inside `detect_sta_lta` in `detector/main.py`. It receives a list of recent segments (start/end/samprate/samples) and should return trigger windows as `(start_ts, end_ts)` pairs.

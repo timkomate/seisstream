@@ -88,6 +88,19 @@ services:
       - --pg-db
       - ${PGDATABASE:-seismic}
 
+  publisher:
+    build:
+      context: .
+      target: publisher
+    profiles:
+      - tools
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    entrypoint:
+      - python
+      - tools/publish_mseed/publish_mseed.py
+
   grafana:
     image: grafana/grafana:10.4.1
     container_name: seisstream-grafana
