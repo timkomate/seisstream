@@ -10,6 +10,11 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   timescaledb:
     image: timescale/timescaledb:latest-pg14
@@ -23,6 +28,11 @@ services:
     volumes:
       - ./db/init:/docker-entrypoint-initdb.d:ro
       - timescale-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-seis} -d ${PGDATABASE:-seismic}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   connector:
     build:
@@ -53,20 +63,22 @@ services:
       target: consumer
     container_name: seisstream-consumer
     depends_on:
-      - rabbitmq
-      - timescaledb
+      rabbitmq:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
     command:
       - consumer
-      - --amqp-host
+      - -h
       - rabbitmq
-      - --amqp-user
+      - -u
       - ${RABBITMQ_USER:-guest}
-      - --amqp-password
+      - -P
       - ${RABBITMQ_PASS:-guest}
       - --amqp-exchange
       - ${AMQP_EXCHANGE:-stations}
       - --amqp-binding-key
-      - ${AMQP_BINDING_KEY:-#}
+      - ${AMQP_BINDING_KEY:-\#}
       - --pg-host
       - timescaledb
       - --pg-user
