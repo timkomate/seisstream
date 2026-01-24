@@ -7,6 +7,7 @@ import time
 
 import pika
 from pymseed import MS3TraceList, system_time
+import numpy as np
 
 
 def handle_signal(signum, _frame) -> None:
@@ -15,11 +16,27 @@ def handle_signal(signum, _frame) -> None:
     RUNNING = False
 
 
-def sine_generator(start_degree: int, batch_size: int, amplitude: int) -> list[int]:
-    return [
-        int(math.sin(math.radians(x)) * amplitude)
-        for x in range(start_degree, start_degree + batch_size)
-    ]
+def sine_generator(start_degree: int, batch_size: int, amplitude: int) -> np.ndarray:
+    angles = np.radians(np.arange(start_degree, start_degree + batch_size))
+    return np.rint(np.sin(angles) * amplitude).astype(int)
+
+
+def ricker_generator(
+    start_sample: int,
+    batch_size: int,
+    sample_rate: float,
+    frequency: float,
+    amplitude: int,
+    total_samples: int,
+) -> np.ndarray:
+    idx = np.arange(start_sample, start_sample + batch_size)
+    center = total_samples / 2.0
+    t = (idx - center) / sample_rate
+    pi_f = math.pi * frequency
+    arg = pi_f * t
+    wavelet = (1.0 - 2.0 * arg * arg) * np.exp(-(arg * arg))
+    wavelet[idx >= total_samples] = 0.0
+    return np.rint(wavelet * amplitude).astype(int)
 
 
 def build_sourceid(net: str, sta: str, loc: str, chan: str) -> str:
@@ -38,6 +55,13 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--count must be >= 0")
     if args.record_length < 256 or (args.record_length & (args.record_length - 1)) != 0:
         raise ValueError("--record-length must be a power of two >= 256")
+    if args.event:
+        if args.event_duration <= 0:
+            raise ValueError("--event-duration must be > 0")
+        if args.event_frequency <= 0:
+            raise ValueError("--event-frequency must be > 0")
+        if not (0.0 <= args.event_probability <= 1.0):
+            raise ValueError("--event-probability must be between 0 and 1")
 
 
 def publish_message(channel, exchange: str, routing_key: str, payload: bytes) -> None:
@@ -65,6 +89,15 @@ def main() -> None:
     parser.add_argument("--chunk-samples", type=int, default=128)
     parser.add_argument("--amplitude", type=int, default=500)
     parser.add_argument(
+        "--event",
+        action="store_true",
+        help="Add a Ricker wavelet burst on top of the sine wave",
+    )
+    parser.add_argument("--event-duration", type=float, default=100.0)
+    parser.add_argument("--event-frequency", type=float, default=0.5)
+    parser.add_argument("--event-amplitude", type=int, default=2000)
+    parser.add_argument("--event-probability", type=float, default=0.05)
+    parser.add_argument(
         "--count", type=int, default=0, help="Number of chunks to publish (0 = forever)"
     )
     parser.add_argument("--record-length", type=int, default=512)
@@ -88,6 +121,8 @@ def main() -> None:
     start_time_ns = system_time()
     sourceid = build_sourceid(args.net, args.sta, args.loc, args.chan)
     routing_key = f"{args.net}.{args.sta}.{args.loc}.{args.chan}"
+    event_total_samples = int(args.event_duration * args.sample_rate)
+    rng = np.random.default_rng()
     logging.debug(
         "Publish settings: sourceid=%s sample_rate=%s chunk_samples=%s amplitude=%s record_length=%s",
         sourceid,
@@ -105,6 +140,14 @@ def main() -> None:
         args.exchange,
         routing_key,
     )
+
+    if args.event:
+        logging.info(
+            "Event mode enabled: duration=%.2fs frequency=%.2fHz amplitude=%d",
+            args.event_duration,
+            args.event_frequency,
+            args.event_amplitude,
+        )
 
     credentials = pika.PlainCredentials(args.user, args.password)
     params = pika.ConnectionParameters(
@@ -127,6 +170,8 @@ def main() -> None:
     total_records = 0
     total_samples = 0
     start_degree = 0
+    event_start_sample = 0
+    event_active = False
 
     try:
         chunk_idx = 0
@@ -151,6 +196,31 @@ def main() -> None:
                 batch_size=chunk_size,
                 amplitude=args.amplitude,
             )
+            if (
+                args.event
+                and not event_active
+                and rng.random() < args.event_probability
+            ):
+                event_active = True
+                event_start_sample = total_samples
+                logging.info(
+                    "Generating event at sample %d (duration=%d samples)",
+                    event_start_sample,
+                    event_total_samples,
+                )
+            if args.event and event_active:
+                offset = total_samples - event_start_sample
+                event_samples = ricker_generator(
+                    start_sample=offset,
+                    batch_size=chunk_size,
+                    sample_rate=args.sample_rate,
+                    frequency=args.event_frequency,
+                    amplitude=args.event_amplitude,
+                    total_samples=event_total_samples,
+                )
+                samples = samples + event_samples
+                if offset + chunk_size >= event_total_samples:
+                    event_active = False
             traces.add_data(
                 sourceid=sourceid,
                 data_samples=samples,
