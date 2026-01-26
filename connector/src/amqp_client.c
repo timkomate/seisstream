@@ -2,8 +2,8 @@
 
 #include "amqp_client.h"
 
-amqp_connection_state_t
-amqp_connect (const AmqpConfig *config)
+static amqp_connection_state_t
+amqp_connect_once (const AmqpConfig *config)
 {
   amqp_connection_state_t conn = amqp_new_connection ();
   amqp_socket_t *socket = NULL;
@@ -73,6 +73,39 @@ amqp_connect (const AmqpConfig *config)
           config->exchange ? config->exchange : "");
 
   return conn;
+}
+
+amqp_connection_state_t
+amqp_connect (const AmqpConfig *config)
+{
+  const uint32_t max_attempts = 20;
+  const uint32_t max_delay_s = 60;
+  uint32_t attempt = 0;
+  uint32_t delay_s;
+
+  // TODO:
+  // Reconsider this, maybe a for loop would work better...
+  while (1)
+  {
+    if (attempt >= max_attempts)
+      break;
+
+    amqp_connection_state_t conn = amqp_connect_once (config);
+
+    if (conn)
+      return conn;
+
+    delay_s = 1 << attempt;
+    if (delay_s > max_delay_s)
+    {
+      delay_s = max_delay_s;
+    }
+    sl_log (1, 0, "AMQP connect attempt %d failed, retrying in %d s\n",
+            attempt+1, delay_s);
+    sl_usleep (delay_s * 1000 * 1000);
+    attempt++;
+  }
+  return NULL;
 }
 
 void

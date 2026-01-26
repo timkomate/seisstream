@@ -92,6 +92,10 @@ main (int argc, char **argv)
   {
     sl_log (2, 0, "Unable to establish AMQP connection\n");
   }
+  else
+  {
+    sl_log (1, 0, "AMQP connection established\n");
+  }
 
   /* Allocate payload buffer */
   plbuffer = (char *)malloc (plbuffersize);
@@ -101,6 +105,7 @@ main (int argc, char **argv)
   }
 
   /* Loop with the connection manager */
+  sl_log (0, 1, "Entering SeedLink collection loop\n");
   while ((status = sl_collect (slconn, &packetinfo,
                                plbuffer, plbuffersize)) != SLTERMINATE)
   {
@@ -126,8 +131,13 @@ main (int argc, char **argv)
     }
   }
 
+  sl_log (0, 1, "Exiting SeedLink collection loop (status=%d)\n", status);
+
   if (amqp_conn)
+  {
+    sl_log (0, 1, "Closing AMQP connection\n");
     amqp_disconnect (amqp_conn);
+  }
 
   if (slconn)
   {
