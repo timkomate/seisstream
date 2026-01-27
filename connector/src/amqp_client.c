@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "amqp_client.h"
+#include "connector_amqp_client.h"
 
 static amqp_connection_state_t
 amqp_connect_once (const AmqpConfig *config)
@@ -201,5 +201,5 @@ log_amqp_server_exception (const char *context, amqp_rpc_reply_t reply)
   default:
     sl_log (2, 0, "%s: server exception method 0x%08X\n",
             context, reply.reply.id);
-  }
+}
 }

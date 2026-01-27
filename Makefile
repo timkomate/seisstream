@@ -12,6 +12,7 @@ CONNECTOR_TARGET = $(BUILD_DIR)/connector
 CONNECTOR_LIBS = -lslink -lrabbitmq
 
 CONSUMER_SRCS = consumer/src/consumer.c \
+                consumer/src/amqp_client.c \
                 consumer/src/cli.c \
                 consumer/src/mseed.c \
                 consumer/src/pg_client.c

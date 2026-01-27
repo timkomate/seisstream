@@ -26,7 +26,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "amqp_client.h"
+#include "connector_amqp_client.h"
 #include "auth.h"
 #include "cli.h"
 #include "connector.h"
