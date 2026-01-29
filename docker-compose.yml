@@ -78,7 +78,7 @@ services:
       - --amqp-exchange
       - ${AMQP_EXCHANGE:-stations}
       - --amqp-binding-key
-      - ${AMQP_BINDING_KEY:-\#}
+      - ${AMQP_BINDING_KEY:-#}
       - --pg-host
       - timescaledb
       - --pg-user
