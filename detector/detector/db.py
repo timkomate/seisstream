@@ -50,14 +50,17 @@ def insert_picks(conn, sid: str, picks: Iterable[Tuple[float, float]]) -> None:
     for t_on, t_off in picks:
         ts_on = datetime.fromtimestamp(t_on, tz=timezone.utc)
         ts_off = datetime.fromtimestamp(t_off, tz=timezone.utc)
-        rows.append((ts_on, ts_off, net, sta, loc, chan))
+        row = (ts_on, ts_off, net, sta, loc, chan)
+        rows.append(row)
 
     if not rows:
+        logging.info("No picks to be inserted into DB.")
         return
 
     with conn.cursor() as cur:
         execute_values(
             cur,
-            "INSERT INTO picks (ts_on, ts_off, net, sta, loc, chan) VALUES %s",
+            "INSERT INTO picks (ts_on, ts_off, net, sta, loc, chan) VALUES %s "
+            "ON CONFLICT DO NOTHING",
             rows,
         )

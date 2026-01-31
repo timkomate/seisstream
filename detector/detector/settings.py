@@ -18,6 +18,7 @@ class Settings:
     prefetch: int = 50
     buffer_seconds: float = 120.0
     detect_every_seconds: float = 15.0
+    pick_filter_seconds: float = 2.0
     log_level: str = "INFO"
     pg_host: str = "localhost"
     pg_port: int = 5432
@@ -46,6 +47,8 @@ def parse_args() -> Settings:
                         help="Seconds of data to keep per source id")
     parser.add_argument("--detect-every-seconds", type=float, default=15.0,
                         help="Run detector every N seconds per source id once the buffer is full")
+    parser.add_argument("--pick-filter-seconds", type=float, default=2.0,
+                        help="Filter picks within N seconds of the previous pick")
     parser.add_argument("--log-level", default="INFO",
                         help="Logging level (DEBUG, INFO, WARNING, ERROR)")
     parser.add_argument("--pg-host", default="localhost",
@@ -73,6 +76,7 @@ def parse_args() -> Settings:
         prefetch=args.prefetch,
         buffer_seconds=args.buffer_seconds,
         detect_every_seconds=args.detect_every_seconds,
+        pick_filter_seconds=args.pick_filter_seconds,
         log_level=args.log_level.upper(),
         pg_host=args.pg_host,
         pg_port=args.pg_port,

@@ -7,6 +7,7 @@ import pika
 from detector.buffer import RollingTraceBuffer
 from detector.db import connect as db_connect, insert_picks
 from detector.detection import decode_mseed, detect_sta_lta
+from detector.picks import filter_picks
 from detector.settings import Settings, parse_args
 
 def configure_channel(channel: pika.adapters.blocking_connection.BlockingChannel,
@@ -93,10 +94,39 @@ def main() -> None:
                                 triggers = detect_sta_lta(buffer.get(sid), sid)
                                 last_detect[sid] = end
                                 if len(triggers):
+                                    logging.info("Detector returned %d triggers for %s", len(triggers), sid)
+                                    logging.debug("Raw triggers for %s: %s", sid, triggers)
+                                    last_ts_on = previous_picks.get(sid)
+                                    filtered, last_ts_on = filter_picks(
+                                        triggers,
+                                        last_ts_on,
+                                        settings.pick_filter_seconds,
+                                    )
+                                    previous_picks[sid] = last_ts_on
+                                    dropped = len(triggers) - len(filtered)
+                                    logging.info(
+                                        "Pick filter for %s kept=%d dropped=%d window=%.2fs last_ts_on=%.3f",
+                                        sid,
+                                        len(filtered),
+                                        dropped,
+                                        settings.pick_filter_seconds,
+                                        last_ts_on if last_ts_on is not None else -1.0,
+                                    )
+                                    if filtered:
+                                        logging.debug("Filtered triggers for %s: %s", sid, filtered)
+                                    if not filtered:
+                                        logging.info(
+                                            "All triggers for %s discarded within %.2fs dedupe window",
+                                            sid,
+                                            settings.pick_filter_seconds,
+                                        )
+                                        continue
+                                    triggers = filtered
                                     logging.info("Detected %d triggers for %s", len(triggers), sid)
                                     for t_start, t_end in triggers:
                                         logging.info("Trigger %s: %.3f -> %.3f", sid, t_start, t_end)
                                     try:
+                                        logging.debug("Inserting %d picks for %s", len(triggers), sid)
                                         insert_picks(db_conn, sid, triggers)
                                     except Exception:
                                         logging.exception("Failed to insert picks for %s", sid)
