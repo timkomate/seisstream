@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 #include <sys/time.h>
 #include <signal.h>
 #include <time.h>
@@ -52,7 +53,7 @@ main(int argc, char **argv)
     .queue = "binq",
     .binding_key = "binq",
     .prefetch = 10,
-    .verbose = 0,
+    .verbose = 1,
     .pg_host = "localhost",
     .pg_port = 5432,
     .pg_user = "admin",
@@ -64,6 +65,22 @@ main(int argc, char **argv)
     return 1;
 
   register_signal_handlers();
+
+  fprintf(stderr,
+          "Config: amqp=%s:%d vhost=%s exchange=%s queue=%s binding=%s prefetch=%d\n",
+          config.host ? config.host : "(null)",
+          config.port,
+          config.vhost ? config.vhost : "(null)",
+          (config.exchange && *config.exchange) ? config.exchange : "(default)",
+          config.queue ? config.queue : "(null)",
+          (config.binding_key && *config.binding_key) ? config.binding_key : "(default)",
+          config.prefetch);
+  fprintf(stderr,
+          "Config: pg_host=%s pg_port=%d pg_user=%s pg_db=%s\n",
+          config.pg_host ? config.pg_host : "(null)",
+          config.pg_port,
+          config.pg_user ? config.pg_user : "(null)",
+          config.pg_dbname ? config.pg_dbname : "(null)");
 
   uint32_t flags = 0;
   flags |= MSF_VALIDATECRC;
@@ -87,14 +104,14 @@ main(int argc, char **argv)
   }
   else
   {
-    ms_log(0, "Connecting to %s\n", pg_conninfo);
+    fprintf(stderr, "Connecting to %s\n", pg_conninfo);
     pg = pg_connect_client(pg_conninfo);
   }
 
   if (!pg)
   {
     fprintf(stderr, "Unable to connect to PostgreSQL\n");
-    printf("[consumer] Closed.\n");
+    fprintf(stderr, "[consumer] Closed.\n");
     cleanup_connections(pg, amqp_conn);
     return 1;
   }
@@ -104,11 +121,11 @@ main(int argc, char **argv)
   {
     fprintf(stderr, "Unable to establish AMQP connection\n");
     cleanup_connections(pg, amqp_conn);
-    printf("[consumer] Closed.\n");
+    fprintf(stderr, "[consumer] Closed.\n");
     return 1;
   }
 
-  printf("[consumer] Waiting on queue '%s'... Ctrl-C to stop.\n", config.queue);
+  fprintf(stderr, "[consumer] Waiting on queue '%s'... Ctrl-C to stop.\n", config.queue);
 
   while (g_run)
   {
@@ -122,13 +139,25 @@ main(int argc, char **argv)
       const unsigned char *body = (const unsigned char *)env.message.body.bytes;
       size_t len = (size_t)env.message.body.len;
 
+      fprintf(stderr,
+              "Received message: delivery_tag=%" PRIu64 " exchange=%.*s routing_key=%.*s body_len=%zu\n",
+              env.delivery_tag,
+              (int)env.exchange.len, (char *)env.exchange.bytes,
+              (int)env.routing_key.len, (char *)env.routing_key.bytes,
+              len);
+
       if (process_message(body, (int64_t)len, flags, config.verbose, pg) != 0)
       {
         fprintf(stderr, "MiniSEED parse failed (len=%zu)\n", len);
         hex_preview(body, len, PAYLOAD_PREVIEW_BYTES);
       }
+      else
+      {
+        fprintf(stderr, "Processed message (len=%zu)\n", len);
+      }
 
       amqp_basic_ack(amqp_conn, 1, env.delivery_tag, 0);
+      fprintf(stderr, "Acked delivery_tag=%" PRIu64 "\n", env.delivery_tag);
       amqp_destroy_envelope(&env);
     }
     else if (rc.reply_type == AMQP_RESPONSE_LIBRARY_EXCEPTION &&
@@ -146,6 +175,6 @@ main(int argc, char **argv)
 
   cleanup_connections(pg, amqp_conn);
 
-  printf("[consumer] Closed.\n");
+  fprintf(stderr, "[consumer] Closed.\n");
   return 0;
 }

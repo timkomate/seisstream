@@ -44,6 +44,7 @@ amqp_connect_once(const ConsumerConfig *config)
     amqp_destroy_connection(conn);
     return NULL;
   }
+  fprintf(stderr, "AMQP socket opened\n");
 
   if (amqp_check_rpc_reply("Logging in to AMQP",
                            amqp_login(conn, config->vhost, 0, 131072, 60,
@@ -52,6 +53,7 @@ amqp_connect_once(const ConsumerConfig *config)
     amqp_destroy_connection(conn);
     return NULL;
   }
+  fprintf(stderr, "AMQP login succeeded\n");
 
   amqp_channel_open(conn, 1);
   if (amqp_check_rpc_reply("Opening AMQP channel", amqp_get_rpc_reply(conn)) != 0)
@@ -59,6 +61,7 @@ amqp_connect_once(const ConsumerConfig *config)
     amqp_disconnect(conn);
     return NULL;
   }
+  fprintf(stderr, "AMQP channel opened\n");
 
   amqp_basic_qos(conn, 1, 0, config->prefetch, 0);
   if (amqp_check_rpc_reply("basic.qos", amqp_get_rpc_reply(conn)) != 0)
@@ -66,6 +69,7 @@ amqp_connect_once(const ConsumerConfig *config)
     amqp_disconnect(conn);
     return NULL;
   }
+  fprintf(stderr, "AMQP QoS set (prefetch=%d)\n", config->prefetch);
 
   if (declare_exchange)
   {
@@ -78,6 +82,7 @@ amqp_connect_once(const ConsumerConfig *config)
       amqp_disconnect(conn);
       return NULL;
     }
+    fprintf(stderr, "AMQP exchange declared\n");
   }
 
   amqp_queue_declare_ok_t *qok = amqp_queue_declare(conn, 1,
@@ -87,6 +92,7 @@ amqp_connect_once(const ConsumerConfig *config)
     amqp_disconnect(conn);
     return NULL;
   }
+  fprintf(stderr, "AMQP queue declared\n");
 
   if (declare_exchange)
   {
@@ -100,6 +106,7 @@ amqp_connect_once(const ConsumerConfig *config)
       amqp_disconnect(conn);
       return NULL;
     }
+    fprintf(stderr, "AMQP queue bound\n");
   }
 
   amqp_basic_consume(conn, 1, amqp_cstring_bytes(config->queue),
@@ -109,6 +116,7 @@ amqp_connect_once(const ConsumerConfig *config)
     amqp_disconnect(conn);
     return NULL;
   }
+  fprintf(stderr, "AMQP consumer started\n");
 
   return conn;
 }
