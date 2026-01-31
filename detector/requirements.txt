@@ -1,0 +1,7 @@
+pika
+pymseed
+numpy
+scipy
+obspy
+matplotlib
+psycopg2-binary
