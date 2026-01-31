@@ -18,3 +18,23 @@ CREATE INDEX IF NOT EXISTS seismic_samples_station_ts_idx
   ON seismic_samples (net, sta, loc, chan, ts DESC);
 
 SELECT add_retention_policy('seismic_samples', INTERVAL '3 days');
+
+CREATE TABLE IF NOT EXISTS picks (
+  id bigserial PRIMARY KEY,
+  ts_on timestamptz NOT NULL,
+  ts_off timestamptz NOT NULL,
+  net text NOT NULL,
+  sta text NOT NULL,
+  loc text NOT NULL,
+  chan text NOT NULL
+);
+
+SELECT create_hypertable('picks', 'ts_on',
+                         chunk_time_interval => INTERVAL '7 days',
+                         if_not_exists => TRUE);
+
+CREATE INDEX IF NOT EXISTS picks_station_ts_idx
+  ON picks (net, sta, loc, chan, ts_on DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS picks_unique_idx
+  ON picks (net, sta, loc, chan, ts_on, ts_off);
