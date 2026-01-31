@@ -1,6 +1,6 @@
 # seisstream
 
-Simple C utilities for streaming MiniSEED over AMQP and ingesting into TimescaleDB.
+Simple utilities for streaming MiniSEED over AMQP, ingesting samples into TimescaleDB, and detecting picks.
 
 ## Architecture
 ```mermaid
@@ -23,10 +23,12 @@ flowchart TB
   MQ -->|AMQP consume| CNS1[Consumer #1<br/>AMQP → libmseed]
   MQ -->|AMQP consume| CNS2[Consumer #2<br/>AMQP → libmseed]
   MQ -->|AMQP consume| CNS3[Consumer #3<br/>AMQP → libmseed]
+  MQ -->|AMQP consume| DET[Detector<br/>AMQP → picks]
 
   CNS1 -->|bulk load| PG[(Timescale DB)]
   CNS2 -->|bulk load| PG
   CNS3 -->|bulk load| PG
+  DET -->|insert picks| PG
 
   PG -->|SQL queries| GRAF[Grafana<br/>Dashboards/Alerts]
 
@@ -38,6 +40,7 @@ flowchart TB
 ## Components
 - `connector/`: SeedLink client that forwards packets to an AMQP (RabbitMQ) broker.
 - `consumer/`: AMQP consumer that parses MiniSEED (libmseed) and bulk-loads samples into TimescaleDB.
+- `detector/`: Python STA/LTA detector that consumes MiniSEED from AMQP and inserts picks into TimescaleDB.
 
 ## Build
 Prerequisites: `libslink`, `librabbitmq`, `libmseed`, `libpq` headers/libs available to the compiler.
@@ -82,10 +85,36 @@ make consumer   # builds only consumer
   -v <amqp-vhost>     (default /)
   -q <queue>          (default binq)
   --prefetch <n>      (default 10)
-  --verbose           (libmseed verbose parsing)
   --pg-host <host>    (default 192.168.0.106)
   --pg-port <port>    (default 5432)
   --pg-user <user>    (default admin)
   --pg-password <pw>  (default my-secret-pw)
   --pg-db <name>      (default seismic)
 ```
+Note: libmseed parsing runs in verbose mode by default.
+
+## Detector usage (AMQP → picks)
+```sh
+python -m detector.main [opts]
+  --host <amqp-host>             (default 127.0.0.1)
+  --port <amqp-port>             (default 5672)
+  --user <amqp-user>             (default guest)
+  --password <amqp-pass>         (default guest)
+  --vhost <amqp-vhost>           (default /)
+  --exchange <amqp-exchange>     (default stations)
+  --queue <queue>                (default empty for exclusive)
+  --binding-key <key>            (repeatable, default "#")
+  --prefetch <n>                 (default 50)
+  --buffer-seconds <secs>        (default 120)
+  --detect-every-seconds <secs>  (default 15)
+  --pick-filter-seconds <secs>   (default 2)
+  --log-level <level>            (default INFO)
+  --pg-host <host>               (default localhost)
+  --pg-port <port>               (default 5432)
+  --pg-user <user>               (default seis)
+  --pg-password <pw>             (default seis)
+  --pg-db <name>                 (default seismic)
+```
+
+## Database schema
+`db/init/01_schema.sql` defines TimescaleDB hypertables for `seismic_samples` and `picks` with indexes and a unique constraint on picks.
