@@ -91,7 +91,16 @@ def main() -> None:
                             if last is None or (end - last) >= settings.detect_every_seconds or end < last:
                                 logging.info("Running detector for %s at %.3f (window=%.1fs)", sid, end,
                                              settings.buffer_seconds)
-                                triggers = detect_sta_lta(buffer.get(sid), sid)
+                                triggers = detect_sta_lta(
+                                    buffer.get(sid),
+                                    sid,
+                                    settings.preprocess_fmin,
+                                    settings.preprocess_fmax,
+                                    settings.sta_seconds,
+                                    settings.lta_seconds,
+                                    settings.trigger_on,
+                                    settings.trigger_off,
+                                )
                                 last_detect[sid] = end
                                 if len(triggers):
                                     logging.info("Detector returned %d triggers for %s", len(triggers), sid)

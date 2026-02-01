@@ -14,10 +14,23 @@ def decode_mseed(body: bytes) -> pymseed.MS3TraceList:
     return traces
 
 
-def detect_sta_lta(_segment: dict, sid: str) -> List[Tuple[float, float]]:
-    y_f = preprocess_trace(_segment["samples"], _segment["samprate"], 0.1, 10)
-    cfg = classic_sta_lta(y_f, int(_segment["samprate"] * 6), int(_segment["samprate"] * 20))
-    pick = trigger_onset(cfg, 2.5, 0.5)
+def detect_sta_lta(
+    _segment: dict,
+    sid: str,
+    fmin: float,
+    fmax: float,
+    sta_seconds: float,
+    lta_seconds: float,
+    trigger_on: float,
+    trigger_off: float,
+) -> List[Tuple[float, float]]:
+    y_f = preprocess_trace(_segment["samples"], _segment["samprate"], fmin, fmax)
+    cfg = classic_sta_lta(
+        y_f,
+        int(_segment["samprate"] * sta_seconds),
+        int(_segment["samprate"] * lta_seconds),
+    )
+    pick = trigger_onset(cfg, trigger_on, trigger_off)
     logging.info("%d events are found.", len(pick))
     if len(pick):
         picks: List[Tuple[float, float]] = []

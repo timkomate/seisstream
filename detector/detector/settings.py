@@ -18,6 +18,12 @@ class Settings:
     prefetch: int = 50
     buffer_seconds: float = 120.0
     detect_every_seconds: float = 15.0
+    preprocess_fmin: float = 0.1
+    preprocess_fmax: float = 10.0
+    sta_seconds: float = 6.0
+    lta_seconds: float = 20.0
+    trigger_on: float = 2.5
+    trigger_off: float = 0.5
     pick_filter_seconds: float = 2.0
     log_level: str = "INFO"
     pg_host: str = "localhost"
@@ -47,6 +53,18 @@ def parse_args() -> Settings:
                         help="Seconds of data to keep per source id")
     parser.add_argument("--detect-every-seconds", type=float, default=15.0,
                         help="Run detector every N seconds per source id once the buffer is full")
+    parser.add_argument("--preprocess-fmin", type=float, default=0.1,
+                        help="Preprocess bandpass low corner frequency (Hz)")
+    parser.add_argument("--preprocess-fmax", type=float, default=10.0,
+                        help="Preprocess bandpass high corner frequency (Hz)")
+    parser.add_argument("--sta-seconds", type=float, default=6.0,
+                        help="STA window length in seconds")
+    parser.add_argument("--lta-seconds", type=float, default=20.0,
+                        help="LTA window length in seconds")
+    parser.add_argument("--trigger-on", type=float, default=2.5,
+                        help="Trigger-on threshold for STA/LTA")
+    parser.add_argument("--trigger-off", type=float, default=0.5,
+                        help="Trigger-off threshold for STA/LTA")
     parser.add_argument("--pick-filter-seconds", type=float, default=2.0,
                         help="Filter picks within N seconds of the previous pick")
     parser.add_argument("--log-level", default="INFO",
@@ -76,6 +94,12 @@ def parse_args() -> Settings:
         prefetch=args.prefetch,
         buffer_seconds=args.buffer_seconds,
         detect_every_seconds=args.detect_every_seconds,
+        preprocess_fmin=args.preprocess_fmin,
+        preprocess_fmax=args.preprocess_fmax,
+        sta_seconds=args.sta_seconds,
+        lta_seconds=args.lta_seconds,
+        trigger_on=args.trigger_on,
+        trigger_off=args.trigger_off,
         pick_filter_seconds=args.pick_filter_seconds,
         log_level=args.log_level.upper(),
         pg_host=args.pg_host,
