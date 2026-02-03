@@ -64,3 +64,29 @@ def insert_picks(conn, sid: str, picks: Iterable[Tuple[float, float]]) -> None:
             "ON CONFLICT DO NOTHING",
             rows,
         )
+
+
+def insert_phase_picks(conn, sid: str, picks: Iterable[Tuple[float, str]]) -> None:
+    parsed = parse_sid(sid)
+    if not parsed:
+        logging.warning("Unable to parse source id for phase picks: %s", sid)
+        return
+    net, sta, loc, chan = parsed
+
+    rows: List[Tuple[datetime, str, str, str, str, str]] = []
+    for t_on, phase in picks:
+        ts_on = datetime.fromtimestamp(t_on, tz=timezone.utc)
+        row = (ts_on, phase, net, sta, loc, chan)
+        rows.append(row)
+
+    if not rows:
+        logging.info("No phase picks to be inserted into DB.")
+        return
+
+    with conn.cursor() as cur:
+        execute_values(
+            cur,
+            "INSERT INTO phase_picks (ts, phase, net, sta, loc, chan) VALUES %s "
+            "ON CONFLICT DO NOTHING",
+            rows,
+        )
