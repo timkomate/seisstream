@@ -38,3 +38,23 @@ CREATE INDEX IF NOT EXISTS picks_station_ts_idx
 
 CREATE UNIQUE INDEX IF NOT EXISTS picks_unique_idx
   ON picks (net, sta, loc, chan, ts_on, ts_off);
+
+CREATE TABLE IF NOT EXISTS phase_picks (
+  id bigserial PRIMARY KEY,
+  ts timestamptz NOT NULL,
+  phase text NOT NULL,
+  net text NOT NULL,
+  sta text NOT NULL,
+  loc text NOT NULL,
+  chan text NOT NULL
+);
+
+SELECT create_hypertable('phase_picks', 'ts',
+                         chunk_time_interval => INTERVAL '7 days',
+                         if_not_exists => TRUE);
+
+CREATE INDEX IF NOT EXISTS phase_picks_station_ts_idx
+  ON phase_picks (net, sta, loc, chan, ts DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS phase_picks_unique_idx
+  ON phase_picks (net, sta, loc, chan, ts, phase);

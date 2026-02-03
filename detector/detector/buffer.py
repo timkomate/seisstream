@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -45,3 +45,32 @@ class RollingTraceBuffer:
 
     def get_samplerate(self, sourceid: str) -> float:
         return self._buffers[sourceid]["samprate"]
+
+    def parse_sid(self, sid: str) -> Optional[Tuple[str, str, str, str]]:
+        if not sid:
+            return None
+        cleaned = sid
+        if cleaned.startswith("FDSN:"):
+            cleaned = cleaned[5:]
+        if "_" in cleaned:
+            parts = cleaned.split("_")
+        elif "." in cleaned:
+            parts = cleaned.split(".")
+        else:
+            return None
+        if len(parts) < 4:
+            return None
+        return parts[0], parts[1], parts[2], parts[3]
+
+    def get_station_buffers(
+        self, net: str, sta: str, loc: str
+    ) -> List[Tuple[str, Dict]]:
+        matches: List[Tuple[str, Dict]] = []
+        for sid, seg in self._buffers.items():
+            parsed = self.parse_sid(sid)
+            if not parsed:
+                continue
+            p_net, p_sta, p_loc, _chan = parsed
+            if p_net == net and p_sta == sta and p_loc == loc:
+                matches.append((sid, seg))
+        return matches
