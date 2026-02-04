@@ -48,7 +48,6 @@ Basic usage:
 ```sh
 python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1
 ```
-![Picks demo](docs/assets/picks.gif)
 
 ## Quick Start (Docker)
 Prerequisites: Docker and Docker Compose.
@@ -61,6 +60,7 @@ docker compose up -d connector consumer grafana
 Edit `streamlist.conf` to choose stations. Set `SEEDLINK_HOST` to point at a SeedLink server if you do not want the default.
 
 Grafana is exposed on `localhost:3000` with the default user/password in `docker-compose.yml`.
+[Real data demo video](docs/assets/real_data.mp4)
 
 ## Configuration
 The Docker setup uses environment variables with defaults:
@@ -81,7 +81,7 @@ Docker option:
 ```sh
 COMPOSE_PROFILES=tools docker compose run --rm publisher --host rabbitmq --exchange stations --count 3
 ```
-![Synthetic recordings demo](docs/assets/recordings.gif)
+[Synthetic recordings and picks demo video]((docs/assets/synthetic_picks.mp4))
 
 ## Build
 Prerequisites: `libslink`, `librabbitmq`, `libmseed`, `libpq` headers/libs available to the compiler.
