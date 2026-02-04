@@ -81,7 +81,7 @@ Docker option:
 ```sh
 COMPOSE_PROFILES=tools docker compose run --rm publisher --host rabbitmq --exchange stations --count 3
 ```
-[Synthetic recordings and picks demo video]((docs/assets/synthetic_picks.mp4))
+[Synthetic recordings and picks demo video](docs/assets/synthetic_detections.mp4)
 
 ## Build
 Prerequisites: `libslink`, `librabbitmq`, `libmseed`, `libpq` headers/libs available to the compiler.
