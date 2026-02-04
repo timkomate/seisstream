@@ -60,7 +60,9 @@ docker compose up -d connector consumer grafana
 Edit `streamlist.conf` to choose stations. Set `SEEDLINK_HOST` to point at a SeedLink server if you do not want the default.
 
 Grafana is exposed on `localhost:3000` with the default user/password in `docker-compose.yml`.
-[Real data demo video](docs/assets/real_data.mp4)
+
+https://github.com/user-attachments/assets/6d3b54e7-188c-432f-aa9c-4b9c00ab6a9b
+
 
 ## Configuration
 The Docker setup uses environment variables with defaults:
@@ -81,7 +83,11 @@ Docker option:
 ```sh
 COMPOSE_PROFILES=tools docker compose run --rm publisher --host rabbitmq --exchange stations --count 3
 ```
-[Synthetic recordings and picks demo video](docs/assets/synthetic_detections.mp4)
+
+
+https://github.com/user-attachments/assets/13190d10-a5c8-46b4-be4e-47f160ae5256
+
+
 
 ## Build
 Prerequisites: `libslink`, `librabbitmq`, `libmseed`, `libpq` headers/libs available to the compiler.
