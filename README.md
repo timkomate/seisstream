@@ -3,12 +3,8 @@
 Seisstream streams MiniSEED from SeedLink to RabbitMQ. Consumers parse MiniSEED and write samples to TimescaleDB. The detector reads from AMQP and stores picks. The core pieces are a C connector/consumer and a Python detector.
 
 ## Architecture
-<table>
-<tr>
-<td bgcolor="#ffffff">
-
 ```mermaid
-%%{init: {"theme":"neutral","themeVariables":{"fontSize":"18px","primaryTextColor":"#000","lineColor":"#000"}}}%%
+%%{init: {"theme":"neutral","themeVariables":{"fontSize":"18px","primaryTextColor":"#000","lineColor":"#000","background":"#ffffff","mainBkg":"#ffffff"}}}%%
 flowchart TB
   subgraph SeedLink Servers
     SL1[SeedLink Server #1]:::src
@@ -39,10 +35,6 @@ flowchart TB
   classDef src fill:#eef,stroke:#557;
 
 ```
-
-</td>
-</tr>
-</table>
 
 
 ## Components
