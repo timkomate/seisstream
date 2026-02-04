@@ -4,7 +4,7 @@ Seisstream streams MiniSEED from SeedLink to RabbitMQ. Consumers parse MiniSEED 
 
 ## Architecture
 ```mermaid
-%%{init: {"theme":"neutral","themeVariables":{"fontSize":"18px","primaryTextColor":"#000","lineColor":"#000"}}}%%
+%%{init: {"theme":"neutral","themeVariables":{"fontSize":"18px","primaryTextColor":"#000","lineColor":"#000","background":"#ffffff","mainBkg":"#ffffff"}}}%%
 flowchart TB
   subgraph SeedLink Servers
     SL1[SeedLink Server #1]:::src
