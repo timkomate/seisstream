@@ -19,30 +19,11 @@ CREATE INDEX IF NOT EXISTS seismic_samples_station_ts_idx
 
 SELECT add_retention_policy('seismic_samples', INTERVAL '3 days');
 
-CREATE TABLE IF NOT EXISTS picks (
-  id bigserial PRIMARY KEY,
-  ts_on timestamptz NOT NULL,
-  ts_off timestamptz NOT NULL,
-  net text NOT NULL,
-  sta text NOT NULL,
-  loc text NOT NULL,
-  chan text NOT NULL
-);
-
-SELECT create_hypertable('picks', 'ts_on',
-                         chunk_time_interval => INTERVAL '7 days',
-                         if_not_exists => TRUE);
-
-CREATE INDEX IF NOT EXISTS picks_station_ts_idx
-  ON picks (net, sta, loc, chan, ts_on DESC);
-
-CREATE UNIQUE INDEX IF NOT EXISTS picks_unique_idx
-  ON picks (net, sta, loc, chan, ts_on, ts_off);
-
 CREATE TABLE IF NOT EXISTS phase_picks (
-  id bigserial PRIMARY KEY,
+  id bigserial,
   ts timestamptz NOT NULL,
   phase text NOT NULL,
+  score double precision,
   net text NOT NULL,
   sta text NOT NULL,
   loc text NOT NULL,
@@ -58,3 +39,24 @@ CREATE INDEX IF NOT EXISTS phase_picks_station_ts_idx
 
 CREATE UNIQUE INDEX IF NOT EXISTS phase_picks_unique_idx
   ON phase_picks (net, sta, loc, chan, ts, phase);
+
+CREATE TABLE IF NOT EXISTS event_detections (
+  id bigserial,
+  ts_on timestamptz NOT NULL,
+  ts_off timestamptz NOT NULL,
+  score double precision,
+  net text NOT NULL,
+  sta text NOT NULL,
+  loc text NOT NULL,
+  chan text NOT NULL
+);
+
+SELECT create_hypertable('event_detections', 'ts_on',
+                         chunk_time_interval => INTERVAL '7 days',
+                         if_not_exists => TRUE);
+
+CREATE INDEX IF NOT EXISTS event_detections_station_ts_idx
+  ON event_detections (net, sta, loc, chan, ts_on DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS event_detections_unique_idx
+  ON event_detections (net, sta, loc, chan, ts_on, ts_off);

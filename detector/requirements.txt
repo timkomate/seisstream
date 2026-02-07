@@ -5,3 +5,5 @@ scipy
 obspy
 matplotlib
 psycopg2-binary
+seisbench
+torch

@@ -26,10 +26,11 @@ class Settings:
     trigger_off: float = 0.5
     pick_filter_seconds: float = 2.0
     detector_mode: str = "sta_lta"
-    eqt_model_path: str = ""
-    eqt_detection_threshold: float = 0.3
-    eqt_norm_mode: str = "std"
-    eqt_window_samples: int = 6000
+    sb_pretrained: str = "original"
+    sb_threshold_p: float = 0.3
+    sb_threshold_s: float = 0.3
+    sb_detection_threshold: float = 0.3
+    sb_device: str = "cpu"
     log_level: str = "INFO"
     pg_host: str = "localhost"
     pg_port: int = 5432
@@ -73,15 +74,17 @@ def parse_args() -> Settings:
     parser.add_argument("--pick-filter-seconds", type=float, default=2.0,
                         help="Filter picks within N seconds of the previous pick")
     parser.add_argument("--detector-mode", default="sta_lta",
-                        help="Detector mode: sta_lta or eqt")
-    parser.add_argument("--eqt-model-path", default="",
-                        help="Path to EQTransformer .h5 model")
-    parser.add_argument("--eqt-detection-threshold", type=float, default=0.3,
-                        help="EQT detection threshold")
-    parser.add_argument("--eqt-norm-mode", default="std",
-                        help="EQT normalization mode: std or max")
-    parser.add_argument("--eqt-window-samples", type=int, default=6000,
-                        help="EQT window length in samples")
+                        help="Detector mode: sta_lta or seisbench")
+    parser.add_argument("--sb-pretrained", default="original",
+                        help="SeisBench EQTransformer pretrained model name (default: original)")
+    parser.add_argument("--sb-threshold-p", type=float, default=0.3,
+                        help="SeisBench P-pick threshold")
+    parser.add_argument("--sb-threshold-s", type=float, default=0.3,
+                        help="SeisBench S-pick threshold")
+    parser.add_argument("--sb-detection-threshold", type=float, default=0.3,
+                        help="SeisBench detection threshold (used by models with detection output)")
+    parser.add_argument("--sb-device", default="cpu",
+                        help="SeisBench device: cpu or cuda")
     parser.add_argument("--log-level", default="INFO",
                         help="Logging level (DEBUG, INFO, WARNING, ERROR)")
     parser.add_argument("--pg-host", default="localhost",
@@ -117,10 +120,11 @@ def parse_args() -> Settings:
         trigger_off=args.trigger_off,
         pick_filter_seconds=args.pick_filter_seconds,
         detector_mode=args.detector_mode,
-        eqt_model_path=args.eqt_model_path,
-        eqt_detection_threshold=args.eqt_detection_threshold,
-        eqt_norm_mode=args.eqt_norm_mode,
-        eqt_window_samples=args.eqt_window_samples,
+        sb_pretrained=args.sb_pretrained,
+        sb_threshold_p=args.sb_threshold_p,
+        sb_threshold_s=args.sb_threshold_s,
+        sb_detection_threshold=args.sb_detection_threshold,
+        sb_device=args.sb_device,
         log_level=args.log_level.upper(),
         pg_host=args.pg_host,
         pg_port=args.pg_port,
