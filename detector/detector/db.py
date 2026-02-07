@@ -30,63 +30,107 @@ def parse_sid(sid: str) -> Optional[Tuple[str, str, str, str]]:
         cleaned = cleaned[5:]
     if "_" in cleaned:
         parts = cleaned.split("_")
-    elif "." in cleaned:
+        if len(parts) < 4:
+            return None
+        net, sta, loc = parts[0], parts[1], parts[2]
+        chan = "".join(parts[3:])
+        if not chan:
+            return None
+        return net, sta, loc, chan
+    if "." in cleaned:
         parts = cleaned.split(".")
-    else:
-        return None
-    if len(parts) < 4:
-        return None
-    return parts[0], parts[1], parts[2], parts[3]
+        if len(parts) < 4:
+            return None
+        net, sta, loc, chan = parts[0], parts[1], parts[2], parts[3]
+        if not chan:
+            return None
+        return net, sta, loc, chan
+    return None
 
 
 def insert_picks(conn, sid: str, picks: Iterable[Tuple[float, float]]) -> None:
-    parsed = parse_sid(sid)
-    if not parsed:
-        logging.warning("Unable to parse source id for picks: %s", sid)
-        return
-    net, sta, loc, chan = parsed
-
-    rows: List[Tuple[datetime, datetime, str, str, str, str]] = []
-    for t_on, t_off in picks:
-        ts_on = datetime.fromtimestamp(t_on, tz=timezone.utc)
-        ts_off = datetime.fromtimestamp(t_off, tz=timezone.utc)
-        row = (ts_on, ts_off, net, sta, loc, chan)
-        rows.append(row)
-
-    if not rows:
-        logging.info("No picks to be inserted into DB.")
-        return
-
-    with conn.cursor() as cur:
-        execute_values(
-            cur,
-            "INSERT INTO picks (ts_on, ts_off, net, sta, loc, chan) VALUES %s "
-            "ON CONFLICT DO NOTHING",
-            rows,
-        )
+    # Backward-compatible alias: write picks as event detections.
+    _insert_time_windows(conn, "event_detections", sid, picks, "event detections")
 
 
-def insert_phase_picks(conn, sid: str, picks: Iterable[Tuple[float, str]]) -> None:
+def insert_phase_picks(
+    conn,
+    sid: str,
+    picks: Iterable[Tuple[float, str] | Tuple[float, str, Optional[float]]],
+) -> None:
     parsed = parse_sid(sid)
     if not parsed:
         logging.warning("Unable to parse source id for phase picks: %s", sid)
         return
     net, sta, loc, chan = parsed
 
-    rows: List[Tuple[datetime, str, str, str, str, str]] = []
-    for t_on, phase in picks:
+    rows: List[Tuple[datetime, str, Optional[float], str, str, str, str]] = []
+    for pick in picks:
+        t_on = pick[0]
+        phase = pick[1]
+        score = float(pick[2]) if len(pick) >= 3 and pick[2] is not None else None
         ts_on = datetime.fromtimestamp(t_on, tz=timezone.utc)
-        row = (ts_on, phase, net, sta, loc, chan)
+        row = (ts_on, phase, score, net, sta, loc, chan)
         rows.append(row)
 
     if not rows:
-        logging.info("No phase picks to be inserted into DB.")
+        logging.debug("No phase picks to be inserted into DB.")
         return
 
     with conn.cursor() as cur:
         execute_values(
             cur,
-            "INSERT INTO phase_picks (ts, phase, net, sta, loc, chan) VALUES %s "
+            "INSERT INTO phase_picks (ts, phase, score, net, sta, loc, chan) VALUES %s "
+            "ON CONFLICT DO NOTHING",
+            rows,
+        )
+
+
+def insert_event_detections(
+    conn,
+    sid: str,
+    detections: Iterable[Tuple[float, float]],
+) -> None:
+    _insert_time_windows(conn, "event_detections", sid, detections, "event detections")
+
+
+def insert_phase_detections(
+    conn,
+    sid: str,
+    detections: Iterable[Tuple[float, float]],
+) -> None:
+    # Backward-compatible alias.
+    insert_event_detections(conn, sid, detections)
+
+
+def _insert_time_windows(
+    conn,
+    table: str,
+    sid: str,
+    windows: Iterable[Tuple[float, float]],
+    label: str,
+) -> None:
+    parsed = parse_sid(sid)
+    if not parsed:
+        logging.warning("Unable to parse source id for %s: %s", label, sid)
+        return
+    net, sta, loc, chan = parsed
+
+    rows: List[Tuple[datetime, datetime, str, str, str, str]] = []
+    for t_on, t_off in windows:
+        ts_on = datetime.fromtimestamp(t_on, tz=timezone.utc)
+        ts_off = datetime.fromtimestamp(t_off, tz=timezone.utc)
+        row = (ts_on, ts_off, net, sta, loc, chan)
+        rows.append(row)
+
+    if not rows:
+        logging.debug("No %s to be inserted into DB.", label)
+        return
+
+    with conn.cursor() as cur:
+        execute_values(
+            cur,
+            f"INSERT INTO {table} (ts_on, ts_off, net, sta, loc, chan) VALUES %s "
             "ON CONFLICT DO NOTHING",
             rows,
         )

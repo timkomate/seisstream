@@ -52,15 +52,26 @@ class RollingTraceBuffer:
         cleaned = sid
         if cleaned.startswith("FDSN:"):
             cleaned = cleaned[5:]
+        # FDSN source IDs can appear as NET_STA_LOC_CHA or with channel split as
+        # NET_STA_LOC_C_H_A (e.g. FDSN:XX_TEST__H_H_Z).
         if "_" in cleaned:
             parts = cleaned.split("_")
-        elif "." in cleaned:
+            if len(parts) < 4:
+                return None
+            net, sta, loc = parts[0], parts[1], parts[2]
+            chan = "".join(parts[3:])
+            if not chan:
+                return None
+            return net, sta, loc, chan
+        if "." in cleaned:
             parts = cleaned.split(".")
-        else:
-            return None
-        if len(parts) < 4:
-            return None
-        return parts[0], parts[1], parts[2], parts[3]
+            if len(parts) < 4:
+                return None
+            net, sta, loc, chan = parts[0], parts[1], parts[2], parts[3]
+            if not chan:
+                return None
+            return net, sta, loc, chan
+        return None
 
     def get_station_buffers(
         self, net: str, sta: str, loc: str
