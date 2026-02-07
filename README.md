@@ -1,6 +1,6 @@
 # seisstream
 
-Seisstream streams MiniSEED from SeedLink to RabbitMQ. Consumers parse MiniSEED and write samples to TimescaleDB. The detector reads from AMQP and stores picks. The core pieces are a C connector/consumer and a Python detector.
+Seisstream streams MiniSEED from SeedLink to RabbitMQ. Consumers parse MiniSEED and write samples to TimescaleDB. The detector reads from AMQP and stores event detections and phase picks. The core pieces are a C connector/consumer and a Python detector.
 
 ## Architecture
 ```mermaid
@@ -23,12 +23,12 @@ flowchart TB
   MQ -->|AMQP consume| CNS1[Consumer #1<br/>AMQP → libmseed]
   MQ -->|AMQP consume| CNS2[Consumer #2<br/>AMQP → libmseed]
   MQ -->|AMQP consume| CNS3[Consumer #3<br/>AMQP → libmseed]
-  MQ -->|AMQP consume| DET[Detector<br/>AMQP → picks]
+  MQ -->|AMQP consume| DET[Detector<br/>AMQP → detections + phase picks]
 
   CNS1 -->|bulk load| PG[(Timescale DB)]
   CNS2 -->|bulk load| PG
   CNS3 -->|bulk load| PG
-  DET -->|insert picks| PG
+  DET -->|insert detections + picks| PG
 
   PG -->|SQL queries| GRAF[Grafana<br/>Dashboards/Alerts]
 
@@ -40,10 +40,13 @@ flowchart TB
 ## Components
 - `connector/`: SeedLink client that forwards packets to an AMQP (RabbitMQ) broker.
 - `consumer/`: AMQP consumer that parses MiniSEED (libmseed) and bulk-loads samples into TimescaleDB.
-- `detector/`: Python STA/LTA detector that consumes MiniSEED from AMQP and inserts picks into TimescaleDB.
+- `detector/`: Python detector that consumes MiniSEED from AMQP and writes `event_detections` and `phase_picks` to TimescaleDB.
 
 ## Detector
-The detector reads MiniSEED from AMQP, buffers short windows, and runs STA/LTA to find picks. It writes picks to TimescaleDB and can be tuned with buffer, detect interval, and pick filter settings.
+The detector supports two modes:
+- `sta_lta`: classic trigger detector, outputs event windows.
+- `seisbench`: SeisBench EQTransformer (pretrained model), outputs event windows and phase picks.
+
 Basic usage:
 ```sh
 python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1
@@ -140,7 +143,7 @@ make consumer   # builds only consumer
 ```
 Note: libmseed parsing runs in verbose mode by default.
 
-## Detector usage (AMQP → picks)
+## Detector usage (AMQP → detections and picks)
 ```sh
 python -m detector.main [opts]
   --host <amqp-host>             (default 127.0.0.1)
@@ -155,6 +158,12 @@ python -m detector.main [opts]
   --buffer-seconds <secs>        (default 120)
   --detect-every-seconds <secs>  (default 15)
   --pick-filter-seconds <secs>   (default 2)
+  --detector-mode <mode>         (sta_lta or seisbench; default sta_lta)
+  --sb-pretrained <name>         (default original)
+  --sb-threshold-p <value>       (default 0.3)
+  --sb-threshold-s <value>       (default 0.3)
+  --sb-detection-threshold <v>   (default 0.3)
+  --sb-device <cpu|cuda>         (default cpu)
   --log-level <level>            (default INFO)
   --pg-host <host>               (default localhost)
   --pg-port <port>               (default 5432)
@@ -164,7 +173,10 @@ python -m detector.main [opts]
 ```
 
 ## Database schema
-`db/init/01_schema.sql` defines TimescaleDB hypertables for `seismic_samples` and `picks` with indexes and a unique constraint on picks.
+`db/init/01_schema.sql` defines three TimescaleDB hypertables:
+- `seismic_samples`: raw waveform samples.
+- `event_detections`: event windows (`ts_on`, `ts_off`).
+- `phase_picks`: pick timestamp (`ts`), phase (`P`/`S`).
 
 ## Troubleshooting
 - Connector exits quickly: verify SeedLink credentials and `SEEDLINK_HOST`.
@@ -177,4 +189,3 @@ python -m detector.main [opts]
 - Add a minimal end-to-end test with sample MiniSEED input.
 - Document non-Docker local setup steps.
 - Add a sample Grafana dashboard screenshot.
-- Integrate EQTransformer-based picks into the detector pipeline.
