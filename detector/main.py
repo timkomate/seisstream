@@ -4,17 +4,17 @@ import logging
 
 import pika
 
-from detector.buffer import RollingTraceBuffer
-from detector.db import (
+from detector.detector.buffer import RollingTraceBuffer
+from detector.detector.db import (
     connect as db_connect,
     insert_event_detections,
     insert_phase_picks,
     insert_picks,
 )
-from detector.detection import decode_mseed, detect_sta_lta
-from detector.picks import filter_phase_picks, filter_picks
-from detector.settings import Settings, parse_args
-from detector.seisbench_backend import SeisBenchConfig, SeisBenchPredictor
+from detector.detector.detection import decode_mseed, detect_sta_lta
+from detector.detector.picks import filter_phase_picks, filter_picks
+from detector.detector.settings import Settings, parse_args
+from detector.detector.seisbench_backend import SeisBenchConfig, SeisBenchPredictor
 
 def configure_channel(channel: pika.adapters.blocking_connection.BlockingChannel,
                       settings: Settings) -> str:

@@ -50,12 +50,30 @@ FROM python:3.11-slim AS publisher
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_DEFAULT_TIMEOUT=120 \
+    PIP_RETRIES=10 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 COPY tools/publish_mseed/requirements.txt /app/tools/publish_mseed/requirements.txt
-RUN pip install --no-cache-dir -r /app/tools/publish_mseed/requirements.txt
+RUN python -m pip install --no-cache-dir --prefer-binary -r /app/tools/publish_mseed/requirements.txt
 
 COPY tools/publish_mseed /app/tools/publish_mseed
 
 CMD ["python", "tools/publish_mseed/publish_mseed.py", "--help"]
 
+FROM python:3.11-slim AS detector
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DEFAULT_TIMEOUT=120 \
+    PIP_RETRIES=10 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+COPY detector/requirements.txt /app/detector/requirements.txt
+RUN python -m pip install --no-cache-dir --prefer-binary -r /app/detector/requirements.txt
+
+COPY detector /app/detector
+
+CMD ["python", "-m", "detector.main", "--help"]

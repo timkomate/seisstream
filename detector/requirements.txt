@@ -6,4 +6,5 @@ obspy
 matplotlib
 psycopg2-binary
 seisbench
+xdas
 torch
