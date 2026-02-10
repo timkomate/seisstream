@@ -88,6 +88,43 @@ services:
       - --pg-db
       - ${PGDATABASE:-seismic}
 
+  detector:
+    build:
+      context: .
+      target: detector
+    container_name: seisstream-detector
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    command:
+      - python
+      - -m
+      - detector.main
+      - --host
+      - rabbitmq
+      - --user
+      - ${RABBITMQ_USER:-guest}
+      - --password
+      - ${RABBITMQ_PASS:-guest}
+      - --exchange
+      - ${AMQP_EXCHANGE:-stations}
+      - --binding-key
+      - ${AMQP_BINDING_KEY:-GE.#}
+      - --pg-host
+      - timescaledb
+      - --pg-user
+      - ${PGUSER:-seis}
+      - --pg-password
+      - ${PGPASSWORD:-seis}
+      - --pg-db
+      - ${PGDATABASE:-seismic}
+      - --detector-mode
+      - ${DETECTOR_MODE:-seisbench}
+      - --sb-pretrained
+      - ${DETECTOR_SB_PRETRAINED:-original}
+
   publisher:
     build:
       context: .

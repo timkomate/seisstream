@@ -9,3 +9,5 @@ tools/generate_mseed/
 tools/replay_mseed/
 streamlist.conf
 *.log
+
+.env
