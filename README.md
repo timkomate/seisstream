@@ -60,7 +60,19 @@ docker compose up -d rabbitmq timescaledb
 docker compose up -d connector consumer grafana
 ```
 
-Edit `streamlist.conf` to choose stations. Set `SEEDLINK_HOST` to point at a SeedLink server if you do not want the default.
+Start detector explicitly:
+```sh
+docker compose up -d detector
+```
+
+Detector build note:
+- `detector` image build can take significantly longer than `connector`/`consumer` because it installs large Python ML dependencies (`torch` and `cuda` related dependencies) and may download model/runtime wheels.
+
+`streamlist.conf` is user-provided and does not exist in a fresh clone. Create it from the example:
+```sh
+cp connector/streamlist.conf.example streamlist.conf
+```
+Then edit `streamlist.conf` to choose stations/selectors. Set `SEEDLINK_HOST` to point at a SeedLink server if you do not want the default.
 
 Grafana is exposed on `localhost:3000` with the default user/password in `docker-compose.yml`.
 
@@ -73,7 +85,46 @@ The Docker setup uses environment variables with defaults:
 - `PGUSER`, `PGPASSWORD`, `PGDATABASE`
 - `AMQP_EXCHANGE`, `AMQP_BINDING_KEY`
 - `SEEDLINK_HOST`
+- `DETECTOR_MODE`, `DETECTOR_SB_PRETRAINED`
 - `GRAFANA_USER`, `GRAFANA_PASSWORD`
+
+Recommended setup:
+1. Create your local env file from the template:
+   `cp .env.example .env`
+2. Put your deployment values there.
+3. Start services with `docker compose up -d`.
+
+Template contents (`.env.example`):
+```sh
+# RabbitMQ
+RABBITMQ_USER=guest
+RABBITMQ_PASS=guest
+
+# TimescaleDB/PostgreSQL
+PGUSER=seis
+PGPASSWORD=seis
+PGDATABASE=seismic
+
+# AMQP routing
+AMQP_EXCHANGE=stations
+AMQP_BINDING_KEY=GE.#
+
+# SeedLink source (host:port)
+SEEDLINK_HOST=geofon.gfz-potsdam.de:18000
+
+# Detector runtime (Docker Compose detector service)
+DETECTOR_MODE=seisbench
+DETECTOR_SB_PRETRAINED=original
+
+# Grafana admin
+GRAFANA_USER=admin
+GRAFANA_PASSWORD=admin
+```
+
+Validate the resolved configuration before starting:
+```sh
+docker compose config
+```
 
 ## Synthetic Testing
 Use the publisher to send synthetic MiniSEED into RabbitMQ. This exercises the consumer and detector without SeedLink.
@@ -99,6 +150,23 @@ Prerequisites: `libslink`, `librabbitmq`, `libmseed`, `libpq` headers/libs avail
 make            # builds connector and consumer into ./build
 make connector  # builds only connector
 make consumer   # builds only consumer
+```
+
+## Detector native run (without Docker)
+Use this when running detector directly on your host instead of in Compose.
+
+```sh
+cd detector
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1 --detector-mode sta_lta
+```
+
+For SeisBench mode:
+```sh
+python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1 --detector-mode seisbench --sb-pretrained original
 ```
 
 ## Connector usage (SeedLink → AMQP)
@@ -141,7 +209,6 @@ make consumer   # builds only consumer
   --pg-password <pw>  (default my-secret-pw)
   --pg-db <name>      (default seismic)
 ```
-Note: libmseed parsing runs in verbose mode by default.
 
 ## Detector usage (AMQP → detections and picks)
 ```sh
