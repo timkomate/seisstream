@@ -78,6 +78,36 @@ Grafana is exposed on `localhost:3000` with the default user/password in `docker
 
 https://github.com/user-attachments/assets/6d3b54e7-188c-432f-aa9c-4b9c00ab6a9b
 
+## Monitoring (RabbitMQ Metrics)
+This project supports RabbitMQ metrics via Prometheus and Grafana using a Compose override.
+
+Monitoring files:
+- `docker-compose.monitoring.yml`: monitoring services and overrides.
+- `monitoring/rabbitmq/rabbitmq.conf`: RabbitMQ Prometheus settings.
+- `monitoring/rabbitmq/enabled_plugins`: enables `rabbitmq_prometheus` plugin.
+- `monitoring/prometheus/prometheus.yml`: Prometheus scrape configuration.
+- `grafana/provisioning/datasources/prometheus.yml`: Grafana Prometheus datasource.
+
+Start with monitoring enabled:
+```sh
+docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+```
+
+Monitoring endpoints:
+- RabbitMQ metrics: `http://localhost:15692/metrics`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
+
+Verify scrape targets:
+```sh
+curl -s http://localhost:15692/metrics | head
+curl -s http://localhost:9090/api/v1/targets | jq .
+```
+
+Notes:
+- The monitoring override extends services from `docker-compose.yml`; core app behavior is unchanged.
+- Queue-level metrics are enabled (`prometheus.return_per_object_metrics = true`), which can increase cardinality in very large deployments.
+- No alert rules or preloaded RabbitMQ dashboard are included. Create these in Prometheus/Grafana as needed.
 
 ## Configuration
 The Docker setup uses environment variables with defaults:
