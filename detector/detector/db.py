@@ -8,6 +8,7 @@ import psycopg2
 from psycopg2.extras import execute_values
 
 from .settings import Settings
+from .utils import parse_sid
 
 
 def connect(settings: Settings):
@@ -20,32 +21,6 @@ def connect(settings: Settings):
     )
     conn.autocommit = True
     return conn
-
-
-def parse_sid(sid: str) -> Optional[Tuple[str, str, str, str]]:
-    if not sid:
-        return None
-    cleaned = sid
-    if cleaned.startswith("FDSN:"):
-        cleaned = cleaned[5:]
-    if "_" in cleaned:
-        parts = cleaned.split("_")
-        if len(parts) < 4:
-            return None
-        net, sta, loc = parts[0], parts[1], parts[2]
-        chan = "".join(parts[3:])
-        if not chan:
-            return None
-        return net, sta, loc, chan
-    if "." in cleaned:
-        parts = cleaned.split(".")
-        if len(parts) < 4:
-            return None
-        net, sta, loc, chan = parts[0], parts[1], parts[2], parts[3]
-        if not chan:
-            return None
-        return net, sta, loc, chan
-    return None
 
 
 def insert_picks(conn, sid: str, picks: Iterable[Tuple[float, float]]) -> None:

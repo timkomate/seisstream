@@ -115,7 +115,7 @@ def main() -> None:
                         start = seg.starttime_seconds
                         end = seg.endtime_seconds
                         samprate = seg.samprate
-                        buffer.add_segment(sid, start, end, samprate, samples)
+                        buffer.add_segment(sid, start, samprate, samples)
                         buffered_samples = buffer.get_segment_length(sid)
                         buffered_seconds = buffered_samples / buffer.get_samplerate(sid)
                         logging.debug(

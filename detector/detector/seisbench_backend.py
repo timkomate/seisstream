@@ -7,6 +7,8 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from obspy import Stream, Trace, UTCDateTime
 
+from .utils import parse_sid
+
 logger = logging.getLogger("detector.seisbench")
 
 
@@ -62,31 +64,6 @@ class SeisBenchPredictor:
             self.config.detection_threshold,
         )
 
-    @staticmethod
-    def _parse_sid(sid: str) -> Optional[Tuple[str, str, str, str]]:
-        cleaned = sid
-        if cleaned.startswith("FDSN:"):
-            cleaned = cleaned[5:]
-        if "_" in cleaned:
-            parts = cleaned.split("_")
-            if len(parts) < 4:
-                return None
-            net, sta, loc = parts[0], parts[1], parts[2]
-            chan = "".join(parts[3:])
-            if not chan:
-                return None
-            return net, sta, loc, chan
-        if "." in cleaned:
-            parts = cleaned.split(".")
-            if len(parts) < 4:
-                return None
-            net, sta, loc, chan = parts[0], parts[1], parts[2], parts[3]
-            if not chan:
-                return None
-            return net, sta, loc, chan
-        else:
-            return None
-
     def _build_multichannel_window(
         self,
         segments: List[Dict],
@@ -139,7 +116,7 @@ class SeisBenchPredictor:
         st = Stream()
         window_start = window_end - (window.shape[1] / samprate)
         for idx, sid in enumerate(channels):
-            parsed = self._parse_sid(sid)
+            parsed = parse_sid(sid)
             net, sta, loc, chan = parsed
 
             tr = Trace(data=window[idx].astype(np.float32))
