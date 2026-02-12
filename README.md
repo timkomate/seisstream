@@ -88,6 +88,10 @@ Notes:
 
 System run demo:
 
+Real event detection example from station `GE.PSZ`, using SeisBench `EQTransformer` (`--detector-mode seisbench --sb-pretrained original`).
+The video is shown at `2x` speed, and the event is correctly detected.
+Purple annotations indicate the first `P` and `S` wave arrivals for the main event of the Szarvas, Hungary earthquake swarm on 19 August 2023.
+
 https://github.com/user-attachments/assets/6d3b54e7-188c-432f-aa9c-4b9c00ab6a9b
 
 Synthetic testing demo (STA/LTA detector mode):
