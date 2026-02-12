@@ -169,6 +169,12 @@ For SeisBench mode:
 python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1 --detector-mode seisbench --sb-pretrained original
 ```
 
+
+
+https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
+
+
+
 ## Connector usage (SeedLink → AMQP)
 ```sh
 ./build/connector [options] host[:port]
