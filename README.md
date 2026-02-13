@@ -78,9 +78,11 @@ Notes:
 ## Demos
 
 System run demo:
+
 https://github.com/user-attachments/assets/6d3b54e7-188c-432f-aa9c-4b9c00ab6a9b
 
 Synthetic testing demo (STA/LTA detector mode):
+
 https://github.com/user-attachments/assets/13190d10-a5c8-46b4-be4e-47f160ae5256
 
 ### Real Event Detection Demo
