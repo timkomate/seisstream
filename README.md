@@ -1,6 +1,6 @@
 # seisstream
 
-Seisstream streams MiniSEED from SeedLink to RabbitMQ. Consumers parse MiniSEED and write samples to TimescaleDB. The detector reads from AMQP and stores event detections and phase picks. The core pieces are a C connector/consumer and a Python detector.
+Seisstream streams MiniSEED from SeedLink into RabbitMQ, stores waveform samples in TimescaleDB, and runs event/phase detection from AMQP. The core pieces are a C  (`connector`, `consumer`) with a earthquake `detector` written in Python.
 
 ## Architecture
 ```mermaid
@@ -33,72 +33,73 @@ flowchart TB
   PG -->|SQL queries| GRAF[Grafana<br/>Dashboards/Alerts]
 
   classDef src fill:#eef,stroke:#557;
-
 ```
 
+## Repository Layout
+- `connector/`: SeedLink client that forwards packets to RabbitMQ.
+- `consumer/`: AMQP consumer that parses MiniSEED (`libmseed`) and bulk-loads samples into TimescaleDB.
+- `detector/`: Python detector that consumes MiniSEED from AMQP and writes `event_detections` and `phase_picks`.
+- `tools/publish_mseed/`: synthetic MiniSEED publisher for functional testing.
 
-## Components
-- `connector/`: SeedLink client that forwards packets to an AMQP (RabbitMQ) broker.
-- `consumer/`: AMQP consumer that parses MiniSEED (libmseed) and bulk-loads samples into TimescaleDB.
-- `detector/`: Python detector that consumes MiniSEED from AMQP and writes `event_detections` and `phase_picks` to TimescaleDB.
-
-## Detector
-The detector supports two modes:
+## Detector Modes
 - `sta_lta`: classic trigger detector, outputs event windows.
-- `seisbench`: SeisBench EQTransformer (pretrained model), outputs event windows and phase picks.
-
-Basic usage:
-```sh
-python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1
-```
+- `seisbench`: SeisBench EQTransformer (pretrained), outputs event windows and phase picks.
 
 ## Quick Start (Docker)
 Prerequisites: Docker and Docker Compose.
 
-```sh
-docker compose up -d rabbitmq timescaledb
-docker compose up -d connector consumer grafana
-```
+1. Create local environment file and set deployment values:
+   ```sh
+   cp .env.example .env
+   ```
+2. Create stream list file:
+   ```sh
+   cp connector/streamlist.conf.example streamlist.conf
+   ```
+   Then edit `streamlist.conf` and selectors. Set `SEEDLINK_HOST` in the .env file as needed.
+3. Start core services:
+   ```sh
+   docker compose up -d rabbitmq timescaledb
+   docker compose up -d connector consumer grafana
+   ```
+4. Start detector:
+   ```sh
+   docker compose up -d detector
+   ```
 
-Start detector explicitly:
-```sh
-docker compose up -d detector
-```
+Notes:
+- Detector image build can take significantly longer than connector/consumer because it installs heavy ML dependencies (`torch`, CUDA-related packages).
+- Validate rendered compose config with:
+  ```sh
+  docker compose config
+  ```
+- Grafana is available at `http://localhost:3000` (credentials from `docker-compose.yml` or `.env`).
 
-Detector build note:
-- `detector` image build can take significantly longer than `connector`/`consumer` because it installs large Python ML dependencies (`torch` and `cuda` related dependencies) and may download model/runtime wheels.
+## Demos
 
-`streamlist.conf` is user-provided and does not exist in a fresh clone. Create it from the example:
-```sh
-cp connector/streamlist.conf.example streamlist.conf
-```
-Then edit `streamlist.conf` to choose stations/selectors. Set `SEEDLINK_HOST` to point at a SeedLink server if you do not want the default.
+System run demo:
+https://github.com/user-attachments/assets/6d3b54e7-188c-432f-aa9c-4b9c00ab6a9b
 
-Grafana is exposed on `localhost:3000` with the default user/password in `docker-compose.yml`.
+Synthetic testing demo (STA/LTA detector mode):
+https://github.com/user-attachments/assets/13190d10-a5c8-46b4-be4e-47f160ae5256
 
+### Real Event Detection Demo
 Real event detection example from station `GE.PSZ`, using SeisBench `EQTransformer` (`--detector-mode seisbench --sb-pretrained original`).
 The video is shown at `2x` speed, and the event is correctly detected.
 Purple annotations indicate the first `P` and `S` wave arrivals for the main event of the Szarvas, Hungary earthquake swarm on 19 August 2023.
 
-https://github.com/user-attachments/assets/6d3b54e7-188c-432f-aa9c-4b9c00ab6a9b
-
+https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
 
 ## Configuration
-The Docker setup uses environment variables with defaults:
-- `RABBITMQ_USER`, `RABBITMQ_PASS`
-- `PGUSER`, `PGPASSWORD`, `PGDATABASE`
-- `AMQP_EXCHANGE`, `AMQP_BINDING_KEY`
-- `SEEDLINK_HOST`
-- `DETECTOR_MODE`, `DETECTOR_SB_PRETRAINED`
-- `GRAFANA_USER`, `GRAFANA_PASSWORD`
+The Docker setup uses these environment variable groups:
+- RabbitMQ: `RABBITMQ_USER`, `RABBITMQ_PASS`
+- TimescaleDB/PostgreSQL: `PGUSER`, `PGPASSWORD`, `PGDATABASE`
+- AMQP routing: `AMQP_EXCHANGE`, `AMQP_BINDING_KEY`
+- SeedLink source: `SEEDLINK_HOST`
+- Detector runtime: `DETECTOR_MODE`, `DETECTOR_SB_PRETRAINED`
+- Grafana admin: `GRAFANA_USER`, `GRAFANA_PASSWORD`
 
-Recommended setup:
-1. Create your local env file from the template:
-   `cp .env.example .env`
-2. Put your deployment values there.
-3. Start services with `docker compose up -d`.
-
-Template contents (`.env.example`):
+Template (`.env.example`):
 ```sh
 # RabbitMQ
 RABBITMQ_USER=guest
@@ -125,13 +126,8 @@ GRAFANA_USER=admin
 GRAFANA_PASSWORD=admin
 ```
 
-Validate the resolved configuration before starting:
-```sh
-docker compose config
-```
-
 ## Synthetic Testing
-Use the publisher to send synthetic MiniSEED into RabbitMQ. This exercises the consumer and detector without SeedLink.
+Publish synthetic MiniSEED into RabbitMQ to exercise consumer and detector without SeedLink.
 
 ```sh
 python3 tools/publish_mseed/publish_mseed.py --host 127.0.0.1 --exchange stations --event --event-probability 0.1 --event-amplitude 2500 --event-duration 20 --event-frequency 0.6
@@ -142,13 +138,8 @@ Docker option:
 COMPOSE_PROFILES=tools docker compose run --rm publisher --host rabbitmq --exchange stations --count 3
 ```
 
-
-https://github.com/user-attachments/assets/13190d10-a5c8-46b4-be4e-47f160ae5256
-
-
-
-## Build
-Prerequisites: `libslink`, `librabbitmq`, `libmseed`, `libpq` headers/libs available to the compiler.
+## Build (Native)
+Prerequisites: `libslink`, `librabbitmq`, `libmseed`, and `libpq` headers/libs available to your compiler.
 
 ```sh
 make            # builds connector and consumer into ./build
@@ -156,8 +147,8 @@ make connector  # builds only connector
 make consumer   # builds only consumer
 ```
 
-## Detector native run (without Docker)
-Use this when running detector directly on your host instead of in Compose.
+## Detector Native Run (Without Docker)
+Use this when running detector directly on host instead of Compose.
 
 ```sh
 cd detector
@@ -173,13 +164,9 @@ For SeisBench mode:
 python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1 --detector-mode seisbench --sb-pretrained original
 ```
 
+## CLI Reference
 
-
-https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
-
-
-
-## Connector usage (SeedLink → AMQP)
+### Connector (SeedLink -> AMQP)
 ```sh
 ./build/connector [options] host[:port]
   -V                 report version
@@ -203,7 +190,8 @@ https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
   --amqp-exchange ex AMQP exchange (default empty)
   --amqp-routing-key k AMQP routing key/queue (default binq)
 ```
-## Consumer usage (AMQP → TimescaleDB)
+
+### Consumer (AMQP -> TimescaleDB)
 ```sh
 ./build/consumer [opts]
   -h <amqp-host>      (default 127.0.0.1)
@@ -220,7 +208,7 @@ https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
   --pg-db <name>      (default seismic)
 ```
 
-## Detector usage (AMQP → detections and picks)
+### Detector (AMQP -> Detections + Picks)
 ```sh
 python -m detector.main [opts]
   --host <amqp-host>             (default 127.0.0.1)
@@ -249,7 +237,7 @@ python -m detector.main [opts]
   --pg-db <name>                 (default seismic)
 ```
 
-## Database schema
+## Database Schema
 `db/init/01_schema.sql` defines three TimescaleDB hypertables:
 - `seismic_samples`: raw waveform samples.
 - `event_detections`: event windows (`ts_on`, `ts_off`).
@@ -259,10 +247,8 @@ python -m detector.main [opts]
 - Connector exits quickly: verify SeedLink credentials and `SEEDLINK_HOST`.
 - Consumer cannot connect: check `PGUSER`, `PGPASSWORD`, and `PGDATABASE`.
 - No data in DB: confirm `streamlist.conf`, `AMQP_EXCHANGE`, and `AMQP_BINDING_KEY`.
-- Use `docker compose logs -f connector consumer` to inspect runtime errors.
+- Use `docker compose logs -f connector consumer detector` to inspect runtime errors.
 
 ## TODO
-- Add unit and functional testing.
+- Add more unit and functional testing.
 - Add a minimal end-to-end test with sample MiniSEED input.
-- Document non-Docker local setup steps.
-- Add a sample Grafana dashboard screenshot.
