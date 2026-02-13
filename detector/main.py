@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 
 import pika
@@ -15,6 +13,7 @@ from detector.detector.detection import decode_mseed, detect_sta_lta
 from detector.detector.picks import filter_phase_picks, filter_picks
 from detector.detector.settings import Settings, parse_args
 from detector.detector.seisbench_backend import SeisBenchConfig, SeisBenchPredictor
+from detector.detector.utils import parse_sid
 
 def configure_channel(channel: pika.adapters.blocking_connection.BlockingChannel,
                       settings: Settings) -> str:
@@ -134,7 +133,7 @@ def main() -> None:
                             if settings.detector_mode == "seisbench":
                                 if phase_predictor is None:
                                     continue
-                                parsed = buffer.parse_sid(sid)
+                                parsed = parse_sid(sid)
                                 if not parsed:
                                     logging.warning("Unable to parse source id for SeisBench: %s", sid)
                                     continue
