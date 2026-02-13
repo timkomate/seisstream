@@ -39,9 +39,6 @@ flowchart TB
 
   classDef src fill:#eef,stroke:#557;
   style BG fill:#ffffff,stroke:#cccccc,stroke-width:2px,rx:12,ry:12;
-
-
-
 ```
 
 ## Repository Layout
@@ -88,10 +85,6 @@ Notes:
 
 System run demo:
 
-Real event detection example from station `GE.PSZ`, using SeisBench `EQTransformer` (`--detector-mode seisbench --sb-pretrained original`).
-The video is shown at `2x` speed, and the event is correctly detected.
-Purple annotations indicate the first `P` and `S` wave arrivals for the main event of the Szarvas, Hungary earthquake swarm on 19 August 2023.
-
 https://github.com/user-attachments/assets/6d3b54e7-188c-432f-aa9c-4b9c00ab6a9b
 
 Synthetic testing demo (STA/LTA detector mode):
@@ -134,6 +127,7 @@ Notes:
 - The monitoring override extends services from `docker-compose.yml`; core app behavior is unchanged.
 - Queue-level metrics are enabled (`prometheus.return_per_object_metrics = true`), which can increase cardinality in very large deployments.
 - No alert rules or preloaded RabbitMQ dashboard are included. Create these in Prometheus/Grafana as needed.
+https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
 
 ## Configuration
 The Docker setup uses these environment variable groups:
@@ -299,3 +293,4 @@ python -m detector.main [opts]
 - GPU-enabled detector runtime is not verified in this repository by default and yet.
 - CI runs detector on CPU only. GPU/CUDA detector execution is not validated in CI.
 - Add more unit and functional testing.
+- Add a minimal end-to-end test with sample MiniSEED input.
