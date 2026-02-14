@@ -96,7 +96,7 @@ https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
 The Docker setup uses these environment variable groups:
 - RabbitMQ: `RABBITMQ_USER`, `RABBITMQ_PASS`
 - TimescaleDB/PostgreSQL: `PGUSER`, `PGPASSWORD`, `PGDATABASE`
-- AMQP routing: `AMQP_EXCHANGE`, `AMQP_BINDING_KEY`
+- AMQP routing: `AMQP_EXCHANGE`, `CONSUMER_AMQP_BINDING_KEY`, `DETECTOR_AMQP_BINDING_KEY`
 - SeedLink source: `SEEDLINK_HOST`
 - Detector runtime: `DETECTOR_MODE`, `DETECTOR_SB_PRETRAINED`
 - Grafana admin: `GRAFANA_USER`, `GRAFANA_PASSWORD`
@@ -114,7 +114,8 @@ PGDATABASE=seismic
 
 # AMQP routing
 AMQP_EXCHANGE=stations
-AMQP_BINDING_KEY=GE.#
+CONSUMER_AMQP_BINDING_KEY=#
+DETECTOR_AMQP_BINDING_KEY=GE.#
 
 # SeedLink source (host:port)
 SEEDLINK_HOST=geofon.gfz-potsdam.de:18000
@@ -248,7 +249,7 @@ python -m detector.main [opts]
 ## Troubleshooting
 - Connector exits quickly: verify SeedLink credentials and `SEEDLINK_HOST`.
 - Consumer cannot connect: check `PGUSER`, `PGPASSWORD`, and `PGDATABASE`.
-- No data in DB: confirm `streamlist.conf`, `AMQP_EXCHANGE`, and `AMQP_BINDING_KEY`.
+- No data in DB: confirm `streamlist.conf`, `AMQP_EXCHANGE`, `CONSUMER_AMQP_BINDING_KEY`, and `DETECTOR_AMQP_BINDING_KEY`.
 - Use `docker compose logs -f connector consumer detector` to inspect runtime errors.
 
 ## TODO
