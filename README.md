@@ -4,35 +4,44 @@ Seisstream streams MiniSEED from SeedLink into RabbitMQ, stores waveform samples
 
 ## Architecture
 ```mermaid
-%%{init: {"theme":"neutral","themeVariables":{"fontSize":"18px","primaryTextColor":"#000","lineColor":"#000","background":"#ffffff","mainBkg":"#ffffff"}}}%%
+%%{init: {"theme":"neutral","themeVariables":{"fontSize":"18px","primaryTextColor":"#000","lineColor":"#000"}}}%%
 flowchart TB
-  subgraph SeedLink Servers
-    SL1[SeedLink Server #1]:::src
-    SL2[SeedLink Server #2]:::src
-    SL3[SeedLink Server #3]:::src
+
+  subgraph BG[" "]
+    direction TB
+
+    subgraph SeedLink Servers
+      SL1[SeedLink Server #1]:::src
+      SL2[SeedLink Server #2]:::src
+      SL3[SeedLink Server #3]:::src
+    end
+
+    SL1 -->|SeedLink/MiniSEED| CON1[Connector #1<br/>libslink → AMQP]
+    SL2 -->|SeedLink/MiniSEED| CON2[Connector #2<br/>libslink → AMQP]
+    SL3 -->|SeedLink/MiniSEED| CON3[Connector #3<br/>libslink → AMQP]
+
+    CON1 -->|AMQP publish| MQ[(AMQP Broker<br/>RabbitMQ)]
+    CON2 -->|AMQP publish| MQ
+    CON3 -->|AMQP publish| MQ
+
+    MQ -->|AMQP consume| CNS1[Consumer #1<br/>AMQP → libmseed]
+    MQ -->|AMQP consume| CNS2[Consumer #2<br/>AMQP → libmseed]
+    MQ -->|AMQP consume| CNS3[Consumer #3<br/>AMQP → libmseed]
+    MQ -->|AMQP consume| DET[Detector<br/>AMQP → detections + phase picks]
+
+    CNS1 -->|bulk load| PG[(Timescale DB)]
+    CNS2 -->|bulk load| PG
+    CNS3 -->|bulk load| PG
+    DET -->|insert detections + picks| PG
+
+    PG -->|SQL queries| GRAF[Grafana<br/>Dashboards/Alerts]
   end
 
-  SL1 -->|SeedLink/MiniSEED| CON1[Connector #1<br/>libslink → AMQP]
-  SL2 -->|SeedLink/MiniSEED| CON2[Connector #2<br/>libslink → AMQP]
-  SL3 -->|SeedLink/MiniSEED| CON3[Connector #3<br/>libslink → AMQP]
-
-  CON1 -->|AMQP publish| MQ[(AMQP Broker<br/>RabbitMQ)]
-  CON2 -->|AMQP publish| MQ
-  CON3 -->|AMQP publish| MQ
-
-  MQ -->|AMQP consume| CNS1[Consumer #1<br/>AMQP → libmseed]
-  MQ -->|AMQP consume| CNS2[Consumer #2<br/>AMQP → libmseed]
-  MQ -->|AMQP consume| CNS3[Consumer #3<br/>AMQP → libmseed]
-  MQ -->|AMQP consume| DET[Detector<br/>AMQP → detections + phase picks]
-
-  CNS1 -->|bulk load| PG[(Timescale DB)]
-  CNS2 -->|bulk load| PG
-  CNS3 -->|bulk load| PG
-  DET -->|insert detections + picks| PG
-
-  PG -->|SQL queries| GRAF[Grafana<br/>Dashboards/Alerts]
-
   classDef src fill:#eef,stroke:#557;
+  style BG fill:#ffffff,stroke:#cccccc,stroke-width:2px,rx:12,ry:12;
+
+
+
 ```
 
 ## Repository Layout
