@@ -24,17 +24,16 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-          cache-dependency-path: detector/requirements-ci.txt
+          cache-dependency-path: detector/requirements.txt
 
       - name: Install detector deps and test tools
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r detector/requirements-ci.txt pytest pytest-cov
+          python -m pip install -r detector/requirements.txt pytest pytest-cov
 
       - name: Run detector tests
         run: |
-          cd detector
-          pytest -q
+          pytest detector/tests/ --cov=detector --cov-report=term-missing -q
 
   docker-build:
     name: Docker Build Smoke
