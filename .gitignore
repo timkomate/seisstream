@@ -2,7 +2,6 @@ build/
 
 .venv-eqt
 notebooks/
-tests/
 __pycache__/
 tmp/
 tools/generate_mseed/
