@@ -50,3 +50,6 @@ jobs:
 
       - name: Build publisher image
         run: docker build --target publisher -t seisstream/publisher:ci .
+
+      - name: Build detector image
+        run: docker build --target detector -t seisstream/detector:ci .
