@@ -32,7 +32,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=build /usr/local/lib/libslink* /usr/lib/
 COPY --from=build /app/build/connector /usr/local/bin/connector
-COPY streamlist.conf /app/streamlist.conf
+COPY connector/streamlist.conf.example /app/streamlist.conf
 ENV PATH="/usr/local/bin:${PATH}" \
     STREAMLIST_FILE=/app/streamlist.conf
 CMD ["connector", "-h"]
