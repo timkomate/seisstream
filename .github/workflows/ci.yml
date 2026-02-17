@@ -22,11 +22,8 @@ jobs:
       - name: Verify Docker Compose
         run: docker compose version
 
-      - name: Build connector image (smoke)
-        run: docker build --target connector -t seisstream/connector:ci .
-
       - name: Build test images once
-        run: docker compose build consumer publisher detector
+        run: docker compose build consumer publisher detector connector
 
       - name: Run detector unit tests in detector image
         run: |

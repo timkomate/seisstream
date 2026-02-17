@@ -62,7 +62,7 @@ COPY tools/publish_mseed /app/tools/publish_mseed
 
 CMD ["python", "tools/publish_mseed/publish_mseed.py", "--help"]
 
-FROM pytorch/pytorch:2.5.1-cpu-py311 AS detector
+FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime AS detector
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
