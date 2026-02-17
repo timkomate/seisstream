@@ -2,6 +2,7 @@
 set -euo pipefail
 
 COMPOSE=${COMPOSE:-"docker compose"}
+SKIP_COMPOSE_BUILD=${SKIP_COMPOSE_BUILD:-0}
 
 HOST=${HOST:-rabbitmq}
 PORT=${PORT:-5672}
@@ -25,7 +26,9 @@ ${COMPOSE} version >/dev/null 2>&1
 
 ${COMPOSE} down --remove-orphans
 ${COMPOSE} up -d --wait rabbitmq timescaledb
-${COMPOSE} build consumer publisher
+if [[ "${SKIP_COMPOSE_BUILD}" != "1" ]]; then
+  ${COMPOSE} build consumer publisher
+fi
 ${COMPOSE} up -d consumer
 
 psql_exec() {

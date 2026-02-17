@@ -262,5 +262,6 @@ python -m detector.main [opts]
 - Use `docker compose logs -f connector consumer detector` to inspect runtime errors.
 
 ## TODO
+- GPU-enabled detector runtime is not verified in this repository by default and yet.
+- CI runs detector on CPU only. GPU/CUDA detector execution is not validated in CI.
 - Add more unit and functional testing.
-- Add a minimal end-to-end test with sample MiniSEED input.

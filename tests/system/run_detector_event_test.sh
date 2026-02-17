@@ -2,6 +2,7 @@
 set -euo pipefail
 
 COMPOSE=${COMPOSE:-"docker compose"}
+SKIP_COMPOSE_BUILD=${SKIP_COMPOSE_BUILD:-0}
 
 HOST=${HOST:-rabbitmq}
 PORT=${PORT:-5672}
@@ -36,7 +37,9 @@ export AMQP_EXCHANGE DETECTOR_AMQP_BINDING_KEY
 ${COMPOSE} version >/dev/null 2>&1
 ${COMPOSE} down --remove-orphans
 ${COMPOSE} up -d --wait rabbitmq timescaledb
-${COMPOSE} build detector publisher
+if [[ "${SKIP_COMPOSE_BUILD}" != "1" ]]; then
+  ${COMPOSE} build detector publisher
+fi
 
 : > stderr.log
 
@@ -56,7 +59,7 @@ trap cleanup EXIT
 psql_exec "delete from event_detections where net='${NET}' and sta='${STA}' and loc='${LOC}' and chan='${CHAN}';" \
   2>> stderr.log
 
-docker compose run -d --rm --no-deps --name seisstream-detector-test detector \
+${COMPOSE} run -d --rm --no-deps --name seisstream-detector-test detector \
   python -m detector.main \
   --host rabbitmq \
   --port "${PORT}" \
