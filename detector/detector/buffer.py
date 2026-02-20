@@ -39,8 +39,7 @@ class RollingTraceBuffer:
                     buf["start"] += trim_samples / buf["samprate"]
 
     def get(self, sourceid: str) -> Dict:
-        buf = self._buffers.get(sourceid)
-        return buf if buf else {}
+        return self._buffers.get(sourceid, {})
 
     def get_segment_length(self, sourceid: str) -> int:
         return self._buffers[sourceid]["samples"].size

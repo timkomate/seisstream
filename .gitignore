@@ -1,6 +1,7 @@
 build/
 
 .venv-eqt
+seisbench/
 notebooks/
 __pycache__/
 tmp/
@@ -9,4 +10,5 @@ tools/replay_mseed/
 streamlist.conf
 *.log
 
+.coverage
 .env
