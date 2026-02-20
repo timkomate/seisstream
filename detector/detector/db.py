@@ -25,7 +25,7 @@ def connect(settings: Settings):
 
 def insert_picks(conn, sid: str, picks: Iterable[Tuple[float, float]]) -> None:
     # Backward-compatible alias: write picks as event detections.
-    _insert_time_windows(conn, "event_detections", sid, picks, "event detections")
+    _insert_time_windows(conn, sid, picks)
 
 
 def insert_phase_picks(
@@ -66,7 +66,7 @@ def insert_event_detections(
     sid: str,
     detections: Iterable[Tuple[float, float]],
 ) -> None:
-    _insert_time_windows(conn, "event_detections", sid, detections, "event detections")
+    _insert_time_windows(conn, sid, detections)
 
 
 def insert_phase_detections(
@@ -80,14 +80,17 @@ def insert_phase_detections(
 
 def _insert_time_windows(
     conn,
-    table: str,
     sid: str,
     windows: Iterable[Tuple[float, float]],
-    label: str,
 ) -> None:
+    sql = (
+        "INSERT INTO event_detections (ts_on, ts_off, net, sta, loc, chan) VALUES %s "
+        "ON CONFLICT DO NOTHING"
+    )
+
     parsed = parse_sid(sid)
     if not parsed:
-        logging.warning("Unable to parse source id for %s: %s", label, sid)
+        logging.warning("Unable to parse source id for event detections: %s", sid)
         return
     net, sta, loc, chan = parsed
 
@@ -99,13 +102,8 @@ def _insert_time_windows(
         rows.append(row)
 
     if not rows:
-        logging.debug("No %s to be inserted into DB.", label)
+        logging.debug("No event detections to be inserted into DB.")
         return
 
     with conn.cursor() as cur:
-        execute_values(
-            cur,
-            f"INSERT INTO {table} (ts_on, ts_off, net, sta, loc, chan) VALUES %s "
-            "ON CONFLICT DO NOTHING",
-            rows,
-        )
+        execute_values(cur, sql, rows)
