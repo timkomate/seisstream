@@ -37,8 +37,7 @@ def detect_sta_lta(
         start = _segment["start"]
         samprate = _segment["samprate"]
         for start_idx, end_idx in pick:
-            picks.append((start + (start_idx / samprate),
-                          start + (end_idx / samprate)))
+            picks.append((start + (start_idx / samprate), start + (end_idx / samprate)))
         logging.info("picks for %s: %s", sid, picks)
         return picks
     return []

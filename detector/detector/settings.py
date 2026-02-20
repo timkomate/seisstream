@@ -46,57 +46,102 @@ def parse_args() -> Settings:
     parser.add_argument("--user", default="guest")
     parser.add_argument("--password", default="guest")
     parser.add_argument("--vhost", default="/")
-    parser.add_argument("--exchange", default="stations",
-                        help="Topic exchange that carries miniSEED messages")
-    parser.add_argument("--queue", default="",
-                        help="Queue name; leave empty for an exclusive, auto-delete queue")
-    parser.add_argument("--binding-key", action="append", dest="binding_keys",
-                        help="Binding key to subscribe (topic syntax). Repeatable.",
-                        default=None)
-    parser.add_argument("--prefetch", type=int, default=50,
-                        help="QoS prefetch count")
-    parser.add_argument("--buffer-seconds", type=float, default=120.0,
-                        help="Seconds of data to keep per source id")
-    parser.add_argument("--detect-every-seconds", type=float, default=15.0,
-                        help="Run detector every N seconds per source id once the buffer is full")
-    parser.add_argument("--preprocess-fmin", type=float, default=0.1,
-                        help="Preprocess bandpass low corner frequency (Hz)")
-    parser.add_argument("--preprocess-fmax", type=float, default=10.0,
-                        help="Preprocess bandpass high corner frequency (Hz)")
-    parser.add_argument("--sta-seconds", type=float, default=6.0,
-                        help="STA window length in seconds")
-    parser.add_argument("--lta-seconds", type=float, default=20.0,
-                        help="LTA window length in seconds")
-    parser.add_argument("--trigger-on", type=float, default=2.5,
-                        help="Trigger-on threshold for STA/LTA")
-    parser.add_argument("--trigger-off", type=float, default=0.5,
-                        help="Trigger-off threshold for STA/LTA")
-    parser.add_argument("--pick-filter-seconds", type=float, default=2.0,
-                        help="Filter picks within N seconds of the previous pick")
-    parser.add_argument("--detector-mode", default="sta_lta",
-                        help="Detector mode: sta_lta or seisbench")
-    parser.add_argument("--sb-pretrained", default="original",
-                        help="SeisBench EQTransformer pretrained model name (default: original)")
-    parser.add_argument("--sb-threshold-p", type=float, default=0.3,
-                        help="SeisBench P-pick threshold")
-    parser.add_argument("--sb-threshold-s", type=float, default=0.3,
-                        help="SeisBench S-pick threshold")
-    parser.add_argument("--sb-detection-threshold", type=float, default=0.3,
-                        help="SeisBench detection threshold (used by models with detection output)")
-    parser.add_argument("--sb-device", default="cpu",
-                        help="SeisBench device: cpu or cuda")
-    parser.add_argument("--log-level", default="INFO",
-                        help="Logging level (DEBUG, INFO, WARNING, ERROR)")
-    parser.add_argument("--pg-host", default="localhost",
-                        help="PostgreSQL host")
-    parser.add_argument("--pg-port", type=int, default=5432,
-                        help="PostgreSQL port")
-    parser.add_argument("--pg-user", default="seis",
-                        help="PostgreSQL user")
-    parser.add_argument("--pg-password", default="seis",
-                        help="PostgreSQL password")
-    parser.add_argument("--pg-db", default="seismic",
-                        help="PostgreSQL database name")
+    parser.add_argument(
+        "--exchange",
+        default="stations",
+        help="Topic exchange that carries miniSEED messages",
+    )
+    parser.add_argument(
+        "--queue",
+        default="",
+        help="Queue name; leave empty for an exclusive, auto-delete queue",
+    )
+    parser.add_argument(
+        "--binding-key",
+        action="append",
+        dest="binding_keys",
+        help="Binding key to subscribe (topic syntax). Repeatable.",
+        default=None,
+    )
+    parser.add_argument("--prefetch", type=int, default=50, help="QoS prefetch count")
+    parser.add_argument(
+        "--buffer-seconds",
+        type=float,
+        default=120.0,
+        help="Seconds of data to keep per source id",
+    )
+    parser.add_argument(
+        "--detect-every-seconds",
+        type=float,
+        default=15.0,
+        help="Run detector every N seconds per source id once the buffer is full",
+    )
+    parser.add_argument(
+        "--preprocess-fmin",
+        type=float,
+        default=0.1,
+        help="Preprocess bandpass low corner frequency (Hz)",
+    )
+    parser.add_argument(
+        "--preprocess-fmax",
+        type=float,
+        default=10.0,
+        help="Preprocess bandpass high corner frequency (Hz)",
+    )
+    parser.add_argument(
+        "--sta-seconds", type=float, default=6.0, help="STA window length in seconds"
+    )
+    parser.add_argument(
+        "--lta-seconds", type=float, default=20.0, help="LTA window length in seconds"
+    )
+    parser.add_argument(
+        "--trigger-on", type=float, default=2.5, help="Trigger-on threshold for STA/LTA"
+    )
+    parser.add_argument(
+        "--trigger-off",
+        type=float,
+        default=0.5,
+        help="Trigger-off threshold for STA/LTA",
+    )
+    parser.add_argument(
+        "--pick-filter-seconds",
+        type=float,
+        default=2.0,
+        help="Filter picks within N seconds of the previous pick",
+    )
+    parser.add_argument(
+        "--detector-mode", default="sta_lta", help="Detector mode: sta_lta or seisbench"
+    )
+    parser.add_argument(
+        "--sb-pretrained",
+        default="original",
+        help="SeisBench EQTransformer pretrained model name (default: original)",
+    )
+    parser.add_argument(
+        "--sb-threshold-p", type=float, default=0.3, help="SeisBench P-pick threshold"
+    )
+    parser.add_argument(
+        "--sb-threshold-s", type=float, default=0.3, help="SeisBench S-pick threshold"
+    )
+    parser.add_argument(
+        "--sb-detection-threshold",
+        type=float,
+        default=0.3,
+        help="SeisBench detection threshold (used by models with detection output)",
+    )
+    parser.add_argument(
+        "--sb-device", default="cpu", help="SeisBench device: cpu or cuda"
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        help="Logging level (DEBUG, INFO, WARNING, ERROR)",
+    )
+    parser.add_argument("--pg-host", default="localhost", help="PostgreSQL host")
+    parser.add_argument("--pg-port", type=int, default=5432, help="PostgreSQL port")
+    parser.add_argument("--pg-user", default="seis", help="PostgreSQL user")
+    parser.add_argument("--pg-password", default="seis", help="PostgreSQL password")
+    parser.add_argument("--pg-db", default="seismic", help="PostgreSQL database name")
     args = parser.parse_args()
 
     binding_keys = args.binding_keys if args.binding_keys else ["#"]

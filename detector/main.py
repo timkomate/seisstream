@@ -15,31 +15,36 @@ from detector.detector.settings import Settings, parse_args
 from detector.detector.seisbench_backend import SeisBenchConfig, SeisBenchPredictor
 from detector.detector.utils import parse_sid
 
-def configure_channel(channel: pika.adapters.blocking_connection.BlockingChannel,
-                      settings: Settings) -> str:
+
+def configure_channel(
+    channel: pika.adapters.blocking_connection.BlockingChannel, settings: Settings
+) -> str:
     channel.basic_qos(prefetch_count=settings.prefetch)
-    channel.exchange_declare(exchange=settings.exchange,
-                             exchange_type="topic",
-                             durable=True)
+    channel.exchange_declare(
+        exchange=settings.exchange, exchange_type="topic", durable=True
+    )
 
     exclusive = settings.queue == ""
-    result = channel.queue_declare(queue=settings.queue,
-                                   durable=not exclusive,
-                                   exclusive=exclusive,
-                                   auto_delete=exclusive)
+    result = channel.queue_declare(
+        queue=settings.queue,
+        durable=not exclusive,
+        exclusive=exclusive,
+        auto_delete=exclusive,
+    )
     queue_name = result.method.queue
 
     for key in settings.binding_keys:
-        channel.queue_bind(exchange=settings.exchange,
-                           queue=queue_name,
-                           routing_key=key)
+        channel.queue_bind(
+            exchange=settings.exchange, queue=queue_name, routing_key=key
+        )
     return queue_name
 
 
 def main() -> None:
     settings = parse_args()
-    logging.basicConfig(level=settings.log_level,
-                        format="%(asctime)s [%(levelname)s] %(message)s")
+    logging.basicConfig(
+        level=settings.log_level, format="%(asctime)s [%(levelname)s] %(message)s"
+    )
     logging.debug(f"Settings: {settings}")
 
     credentials = pika.PlainCredentials(settings.user, settings.password)
@@ -92,13 +97,22 @@ def main() -> None:
         with pika.BlockingConnection(params) as connection:
             channel = connection.channel()
             queue_name = configure_channel(channel, settings)
-            logging.info("Consuming from exchange='%s' queue='%s' bindings=%s prefetch=%d",
-                         settings.exchange, queue_name, settings.binding_keys, settings.prefetch)
+            logging.info(
+                "Consuming from exchange='%s' queue='%s' bindings=%s prefetch=%d",
+                settings.exchange,
+                queue_name,
+                settings.binding_keys,
+                settings.prefetch,
+            )
+
             def on_message(ch, method, properties, body):
                 try:
                     traces = decode_mseed(body)
                 except Exception:
-                    logging.exception("Failed to decode miniSEED from routing key %s", method.routing_key)
+                    logging.exception(
+                        "Failed to decode miniSEED from routing key %s",
+                        method.routing_key,
+                    )
                     ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
                     return
 
@@ -125,7 +139,10 @@ def main() -> None:
                         )
                         mode_ready = False
                         if settings.detector_mode == "seisbench":
-                            mode_ready = phase_predictor is not None and buffered_samples >= phase_predictor.input_samples
+                            mode_ready = (
+                                phase_predictor is not None
+                                and buffered_samples >= phase_predictor.input_samples
+                            )
                         else:
                             mode_ready = buffered_seconds >= settings.buffer_seconds
 
@@ -135,17 +152,29 @@ def main() -> None:
                                     continue
                                 parsed = parse_sid(sid)
                                 if not parsed:
-                                    logging.warning("Unable to parse source id for SeisBench: %s", sid)
+                                    logging.warning(
+                                        "Unable to parse source id for SeisBench: %s",
+                                        sid,
+                                    )
                                     continue
                                 net, sta, loc, _chan = parsed
-                                station_buffers = buffer.get_station_buffers(net, sta, loc)
+                                station_buffers = buffer.get_station_buffers(
+                                    net, sta, loc
+                                )
                                 if not station_buffers:
-                                    logging.debug("No station buffers available for %s.%s.%s", net, sta, loc)
+                                    logging.debug(
+                                        "No station buffers available for %s.%s.%s",
+                                        net,
+                                        sta,
+                                        loc,
+                                    )
                                     continue
                                 station_buffers.sort(key=lambda item: item[0])
                                 segments = [seg for _sid, seg in station_buffers]
                                 channels = [seg_id for seg_id, _seg in station_buffers]
-                                ready_samples = [seg["samples"].size for seg in segments]
+                                ready_samples = [
+                                    seg["samples"].size for seg in segments
+                                ]
                                 if min(ready_samples) < phase_predictor.input_samples:
                                     logging.debug(
                                         "Skipping detector for %s.%s.%s: channel buffers not ready min_samples=%d required_samples=%d per_channel=%s",
@@ -160,9 +189,16 @@ def main() -> None:
                                 group_end = max(seg["end"] for seg in segments)
                                 group_key = f"{net}.{sta}.{loc}"
                                 last = last_detect.get(group_key)
-                                if last is None or (group_end - last) >= settings.detect_every_seconds or group_end < last:
+                                if (
+                                    last is None
+                                    or (group_end - last)
+                                    >= settings.detect_every_seconds
+                                    or group_end < last
+                                ):
                                     samprate = segments[0]["samprate"]
-                                    window_seconds = phase_predictor.input_samples / samprate
+                                    window_seconds = (
+                                        phase_predictor.input_samples / samprate
+                                    )
                                     logging.info(
                                         "Running detector for %s at %.3f (window=%d samples, %.1fs channels=%d)",
                                         group_key,
@@ -171,10 +207,12 @@ def main() -> None:
                                         window_seconds,
                                         len(segments),
                                     )
-                                    triggers, detections = phase_predictor.predict_multichannel(
-                                        segments,
-                                        channels,
-                                        samprate,
+                                    triggers, detections = (
+                                        phase_predictor.predict_multichannel(
+                                            segments,
+                                            channels,
+                                            samprate,
+                                        )
                                     )
                                     logging.info(
                                         "Detector raw result for %s: triggers=%d detections=%d",
@@ -187,7 +225,9 @@ def main() -> None:
                                     sid_for_db = channels[0]
                                     if len(detections):
                                         try:
-                                            insert_event_detections(db_conn, sid_for_db, detections)
+                                            insert_event_detections(
+                                                db_conn, sid_for_db, detections
+                                            )
                                             logging.debug(
                                                 "Inserted %d event detections for %s",
                                                 len(detections),
@@ -195,7 +235,8 @@ def main() -> None:
                                             )
                                         except Exception:
                                             logging.exception(
-                                                "Failed to insert event detections for %s", sid_for_db
+                                                "Failed to insert event detections for %s",
+                                                sid_for_db,
                                             )
                                     else:
                                         logging.debug(
@@ -203,8 +244,16 @@ def main() -> None:
                                             group_key,
                                         )
                                     if len(triggers):
-                                        logging.info("Detector returned %d phase picks for %s", len(triggers), group_key)
-                                        logging.debug("Raw triggers for %s: %s", group_key, triggers)
+                                        logging.info(
+                                            "Detector returned %d phase picks for %s",
+                                            len(triggers),
+                                            group_key,
+                                        )
+                                        logging.debug(
+                                            "Raw triggers for %s: %s",
+                                            group_key,
+                                            triggers,
+                                        )
                                         last_ts_on = previous_picks.get(group_key)
                                         filtered, last_ts_on = filter_phase_picks(
                                             triggers,
@@ -219,10 +268,16 @@ def main() -> None:
                                             len(filtered),
                                             dropped,
                                             settings.pick_filter_seconds,
-                                            last_ts_on if last_ts_on is not None else -1.0,
+                                            last_ts_on
+                                            if last_ts_on is not None
+                                            else -1.0,
                                         )
                                         if filtered:
-                                            logging.debug("Filtered triggers for %s: %s", group_key, filtered)
+                                            logging.debug(
+                                                "Filtered triggers for %s: %s",
+                                                group_key,
+                                                filtered,
+                                            )
                                         if not filtered:
                                             logging.debug(
                                                 "All triggers for %s discarded within %.2fs dedupe window",
@@ -231,23 +286,39 @@ def main() -> None:
                                             )
                                             continue
                                         triggers = filtered
-                                        logging.debug("Detected %d triggers for %s", len(triggers), group_key)
+                                        logging.debug(
+                                            "Detected %d triggers for %s",
+                                            len(triggers),
+                                            group_key,
+                                        )
                                         for trigger in triggers:
                                             t_start = trigger[0]
                                             phase = trigger[1]
-                                            logging.debug("Trigger %s: %.3f phase=%s", group_key, t_start, phase)
+                                            logging.debug(
+                                                "Trigger %s: %.3f phase=%s",
+                                                group_key,
+                                                t_start,
+                                                phase,
+                                            )
                                         try:
                                             logging.debug(
-                                                "Inserting %d phase picks for %s", len(triggers), sid_for_db
+                                                "Inserting %d phase picks for %s",
+                                                len(triggers),
+                                                sid_for_db,
                                             )
-                                            insert_phase_picks(db_conn, sid_for_db, triggers)
+                                            insert_phase_picks(
+                                                db_conn, sid_for_db, triggers
+                                            )
                                             logging.debug(
                                                 "Inserted %d phase picks for %s",
                                                 len(triggers),
                                                 sid_for_db,
                                             )
                                         except Exception:
-                                            logging.exception("Failed to insert phase picks for %s", sid_for_db)
+                                            logging.exception(
+                                                "Failed to insert phase picks for %s",
+                                                sid_for_db,
+                                            )
                                     else:
                                         logging.debug(
                                             "No triggers produced for %s with current thresholds/window.",
@@ -262,9 +333,17 @@ def main() -> None:
                                     )
                             else:
                                 last = last_detect.get(sid)
-                                if last is None or (end - last) >= settings.detect_every_seconds or end < last:
-                                    logging.info("Running STA/LTA detector for %s at %.3f (window=%.1fs)", sid, end,
-                                                 settings.buffer_seconds)
+                                if (
+                                    last is None
+                                    or (end - last) >= settings.detect_every_seconds
+                                    or end < last
+                                ):
+                                    logging.info(
+                                        "Running STA/LTA detector for %s at %.3f (window=%.1fs)",
+                                        sid,
+                                        end,
+                                        settings.buffer_seconds,
+                                    )
                                     triggers = detect_sta_lta(
                                         buffer.get(sid),
                                         sid,
@@ -277,8 +356,14 @@ def main() -> None:
                                     )
                                     last_detect[sid] = end
                                     if len(triggers):
-                                        logging.info("Detector returned %d STA/LTA windows for %s", len(triggers), sid)
-                                        logging.debug("Raw triggers for %s: %s", sid, triggers)
+                                        logging.info(
+                                            "Detector returned %d STA/LTA windows for %s",
+                                            len(triggers),
+                                            sid,
+                                        )
+                                        logging.debug(
+                                            "Raw triggers for %s: %s", sid, triggers
+                                        )
                                         last_ts_on = previous_picks.get(sid)
                                         filtered, last_ts_on = filter_picks(
                                             triggers,
@@ -293,10 +378,16 @@ def main() -> None:
                                             len(filtered),
                                             dropped,
                                             settings.pick_filter_seconds,
-                                            last_ts_on if last_ts_on is not None else -1.0,
+                                            last_ts_on
+                                            if last_ts_on is not None
+                                            else -1.0,
                                         )
                                         if filtered:
-                                            logging.debug("Filtered triggers for %s: %s", sid, filtered)
+                                            logging.debug(
+                                                "Filtered triggers for %s: %s",
+                                                sid,
+                                                filtered,
+                                            )
                                         if not filtered:
                                             logging.debug(
                                                 "All triggers for %s discarded within %.2fs dedupe window",
@@ -305,20 +396,35 @@ def main() -> None:
                                             )
                                             continue
                                         triggers = filtered
-                                        logging.debug("Detected %d triggers for %s", len(triggers), sid)
+                                        logging.debug(
+                                            "Detected %d triggers for %s",
+                                            len(triggers),
+                                            sid,
+                                        )
                                         for t_start, t_end in triggers:
-                                            logging.debug("Trigger %s: %.3f -> %.3f", sid, t_start, t_end)
+                                            logging.debug(
+                                                "Trigger %s: %.3f -> %.3f",
+                                                sid,
+                                                t_start,
+                                                t_end,
+                                            )
                                         try:
-                                            logging.debug("Inserting %d picks for %s", len(triggers), sid)
+                                            logging.debug(
+                                                "Inserting %d picks for %s",
+                                                len(triggers),
+                                                sid,
+                                            )
                                             insert_picks(db_conn, sid, triggers)
                                         except Exception:
-                                            logging.exception("Failed to insert picks for %s", sid)
+                                            logging.exception(
+                                                "Failed to insert picks for %s", sid
+                                            )
 
                 ch.basic_ack(delivery_tag=method.delivery_tag)
 
-            channel.basic_consume(queue=queue_name,
-                                  on_message_callback=on_message,
-                                  auto_ack=False)
+            channel.basic_consume(
+                queue=queue_name, on_message_callback=on_message, auto_ack=False
+            )
             try:
                 channel.start_consuming()
             except KeyboardInterrupt:

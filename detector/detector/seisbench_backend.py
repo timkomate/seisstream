@@ -40,7 +40,9 @@ class SeisBenchPredictor:
         # Most SeisBench models expose a fixed in_samples.
         self.input_samples = int(getattr(self.model, "in_samples", 0) or 0)
         if self.input_samples <= 0:
-            raise ValueError("Loaded SeisBench model does not expose a valid in_samples value.")
+            raise ValueError(
+                "Loaded SeisBench model does not expose a valid in_samples value."
+            )
 
         desired_device = config.device.lower()
         if desired_device == "cuda":
@@ -158,13 +160,17 @@ class SeisBenchPredictor:
         raw_picks = getattr(result, "picks", [])
         raw_detections = getattr(result, "detections", [])
         logger.debug("SeisBench classify returned raw_picks=%d", len(raw_picks))
-        logger.debug("SeisBench classify returned raw_detections=%d", len(raw_detections))
+        logger.debug(
+            "SeisBench classify returned raw_detections=%d", len(raw_detections)
+        )
         picks: List[Tuple[float, str, Optional[float]]] = []
         for pick in raw_picks:
             phase = str(getattr(pick, "phase", "") or "").upper()
             if phase not in {"P", "S"}:
                 continue
-            peak_time = getattr(pick, "peak_time", None) or getattr(pick, "start_time", None)
+            peak_time = getattr(pick, "peak_time", None) or getattr(
+                pick, "start_time", None
+            )
             if peak_time is None:
                 continue
             score = getattr(pick, "peak_value", None)

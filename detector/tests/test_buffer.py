@@ -10,7 +10,6 @@ class TestRollingTraceBuffer(unittest.TestCase):
         buf = RollingTraceBuffer(max_seconds=20.0)
         samples = np.arange(21, dtype=float)
         buf.add_segment("XX.STA..HHZ", start=0.0, samprate=1.0, samples=samples)
-        segment = buf.get("XX.STA..HHZ")
         self.assertEqual(buf.get_segment_length("XX.STA..HHZ"), 21)
         self.assertEqual(buf.get_samplerate("XX.STA..HHZ"), 1.0)
 
@@ -59,7 +58,7 @@ class TestRollingTraceBuffer(unittest.TestCase):
         self.assertEqual(segment2["start"], 10.0)
         self.assertEqual(segment2["end"], 30.0)
         self.assertEqual(segment2["samprate"], 1.0)
-        assert segment2 is not {}
+        assert segment2 != {}
 
     def test_add_segment_cutoff(self):
         buf = RollingTraceBuffer(max_seconds=10.0)

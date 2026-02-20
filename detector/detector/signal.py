@@ -38,7 +38,9 @@ def bandpass_filter(y, fs, fmin, fmax, order=4, zero_phase=True, demean=True):
 
     nyq = 0.5 * float(fs)
     if not (0 < fmin < fmax < nyq):
-        raise ValueError(f"Require 0 < fmin < fmax < fs/2. Got fmin={fmin}, fmax={fmax}, fs={fs}.")
+        raise ValueError(
+            f"Require 0 < fmin < fmax < fs/2. Got fmin={fmin}, fmax={fmax}, fs={fs}."
+        )
 
     sos = butter(order, [fmin / nyq, fmax / nyq], btype="bandpass", output="sos")
 
@@ -46,10 +48,15 @@ def bandpass_filter(y, fs, fmin, fmax, order=4, zero_phase=True, demean=True):
         return sosfiltfilt(sos, y)
     else:
         from scipy.signal import sosfilt
+
         return sosfilt(sos, y)
 
 
-def preprocess_trace(y, fs, fmin, fmax, taper_frac=0.05, order=4, zero_phase=True, demean=True):
+def preprocess_trace(
+    y, fs, fmin, fmax, taper_frac=0.05, order=4, zero_phase=True, demean=True
+):
     y_t = taper_cosine(y, frac=taper_frac)
-    y_f = bandpass_filter(y_t, fs, fmin, fmax, order=order, zero_phase=zero_phase, demean=demean)
+    y_f = bandpass_filter(
+        y_t, fs, fmin, fmax, order=order, zero_phase=zero_phase, demean=demean
+    )
     return y_f
