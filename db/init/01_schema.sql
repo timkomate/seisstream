@@ -40,6 +40,15 @@ CREATE INDEX IF NOT EXISTS phase_picks_station_ts_idx
 CREATE UNIQUE INDEX IF NOT EXISTS phase_picks_unique_idx
   ON phase_picks (net, sta, loc, chan, ts, phase);
 
+ALTER TABLE phase_picks
+  SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'net,sta,loc,chan,phase'
+  );
+
+SELECT add_compression_policy('phase_picks', INTERVAL '7 days');
+SELECT add_retention_policy('phase_picks', INTERVAL '90 days');
+
 CREATE TABLE IF NOT EXISTS event_detections (
   id bigserial,
   ts_on timestamptz NOT NULL,
@@ -60,3 +69,12 @@ CREATE INDEX IF NOT EXISTS event_detections_station_ts_idx
 
 CREATE UNIQUE INDEX IF NOT EXISTS event_detections_unique_idx
   ON event_detections (net, sta, loc, chan, ts_on, ts_off);
+
+ALTER TABLE event_detections
+  SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'net,sta,loc,chan'
+  );
+
+SELECT add_compression_policy('event_detections', INTERVAL '7 days');
+SELECT add_retention_policy('event_detections', INTERVAL '90 days');
