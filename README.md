@@ -11,9 +11,9 @@ flowchart TB
     direction TB
 
     subgraph SeedLink Servers
-      SL1[SeedLink Server #1]:::src
-      SL2[SeedLink Server #2]:::src
-      SL3[SeedLink Server #3]:::src
+      SL1[SeedLink Server #1]
+      SL2[SeedLink Server #2]
+      SL3[SeedLink Server #3]
     end
 
     SL1 -->|SeedLink/MiniSEED| CON1[Connector #1<br/>libslink -> AMQP]
@@ -27,17 +27,31 @@ flowchart TB
     MQ -->|AMQP consume| CNS1[Consumer #1<br/>AMQP -> libmseed]
     MQ -->|AMQP consume| CNS2[Consumer #2<br/>AMQP -> libmseed]
     MQ -->|AMQP consume| CNS3[Consumer #3<br/>AMQP -> libmseed]
-    MQ -->|AMQP consume| DET[Detector<br/>AMQP -> detections + phase picks]
+    MQ -->|AMQP consume| DET[EQ Detector<br/>AMQP ->  EQ detections / phase picks]
 
     CNS1 -->|bulk load| PG[(Timescale DB)]
     CNS2 -->|bulk load| PG
     CNS3 -->|bulk load| PG
-    DET -->|insert detections + picks| PG
+    DET -->| push EQ detections + phase picks| PG
 
-    PG -->|SQL queries| GRAF[Grafana<br/>Dashboards/Alerts]
+    LOC[EQ Locator<br/> Calculate EQ locations ]
+    GRAF[Grafana<br/>Dashboards/Alerts]
+
+    PG -->|query phase picks| LOC
+    LOC -->|push EQ origins| PG
+    PG --> | query waveforms| GRAF
+    LOC -->| query hypocenters | GRAF
+
+    class CON1,CON2,CON3 connector;
+    class CNS1,CNS2,CNS3 consumer;
+    class DET detector;
+    class LOC locator;
   end
 
-  classDef src fill:#eef,stroke:#557;
+  classDef connector fill:#e8f7ef,stroke:#2f855a,color:#111;
+  classDef consumer fill:#fff7e6,stroke:#b7791f,color:#111;
+  classDef detector fill:#fdecef,stroke:#c53030,color:#111;
+  classDef locator fill:#edf2ff,stroke:#5a67d8,color:#111;
   style BG fill:#ffffff,stroke:#cccccc,stroke-width:2px,rx:12,ry:12;
 
   classDef connector fill:#e8f7ef,stroke:#2f855a,color:#111;
