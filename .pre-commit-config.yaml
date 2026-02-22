@@ -1,0 +1,32 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check (python)
+        entry: ruff check detector tools/publish_mseed tools/replay_mseed
+        language: system
+        pass_filenames: false
+        files: ^(detector|tools/(publish_mseed|replay_mseed))/.*\.py$
+
+      - id: ruff-format-check
+        name: ruff format --check (python)
+        entry: ruff format --check detector tools/publish_mseed tools/replay_mseed
+        language: system
+        pass_filenames: false
+        files: ^(detector|tools/(publish_mseed|replay_mseed))/.*\.py$
+
+      - id: bandit
+        name: bandit (python security scan)
+        entry: bandit -q -r detector tools/publish_mseed tools/replay_mseed -x detector/tests -s B105
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        files: ^(detector|tools/(publish_mseed|replay_mseed))/.*\.py$
+
+      - id: cppcheck
+        name: cppcheck (connector/consumer)
+        entry: cppcheck --enable=warning,performance,portability --error-exitcode=1 --quiet -Iconnector/include -Iconsumer/include connector/src consumer/src
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+        files: ^(connector|consumer)/(src|include)/.*\.(c|h)$
