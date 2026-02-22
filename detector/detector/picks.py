@@ -3,6 +3,19 @@ from __future__ import annotations
 from typing import Iterable, List, Optional, Tuple
 
 
+def _keep_all_picks(
+    picks_list: List[Tuple],
+    last_ts_on: Optional[float],
+) -> Tuple[List[Tuple], Optional[float]]:
+    if not picks_list:
+        return [], last_ts_on
+
+    latest = picks_list[-1][0]
+    if last_ts_on is not None and last_ts_on > latest:
+        latest = last_ts_on
+    return picks_list, latest
+
+
 def filter_picks(
     picks: Iterable[Tuple[float, float]],
     last_ts_on: Optional[float],
@@ -10,12 +23,7 @@ def filter_picks(
 ) -> Tuple[List[Tuple[float, float]], Optional[float]]:
     picks_list = sorted(picks, key=lambda item: item[0])
     if window_seconds <= 0:
-        if picks_list:
-            latest = picks_list[-1][0]
-            if last_ts_on is not None and last_ts_on > latest:
-                latest = last_ts_on
-            return picks_list, latest
-        return [], last_ts_on
+        return _keep_all_picks(picks_list, last_ts_on)
 
     accepted: List[Tuple[float, float]] = []
     latest = last_ts_on
@@ -35,12 +43,7 @@ def filter_phase_picks(
 ) -> Tuple[List[Tuple], Optional[float]]:
     picks_list = sorted(picks, key=lambda item: item[0])
     if window_seconds <= 0:
-        if picks_list:
-            latest = picks_list[-1][0]
-            if last_ts_on is not None and last_ts_on > latest:
-                latest = last_ts_on
-            return picks_list, latest
-        return [], last_ts_on
+        return _keep_all_picks(picks_list, last_ts_on)
 
     accepted: List[Tuple] = []
     latest = last_ts_on

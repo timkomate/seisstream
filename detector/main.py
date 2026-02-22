@@ -7,7 +7,6 @@ from detector.detector.db import (
     connect as db_connect,
     insert_event_detections,
     insert_phase_picks,
-    insert_picks,
 )
 from detector.detector.detection import decode_mseed, detect_sta_lta
 from detector.detector.picks import filter_phase_picks, filter_picks
@@ -414,7 +413,9 @@ def main() -> None:
                                                 len(triggers),
                                                 sid,
                                             )
-                                            insert_picks(db_conn, sid, triggers)
+                                            insert_event_detections(
+                                                db_conn, sid, triggers
+                                            )
                                         except Exception:
                                             logging.exception(
                                                 "Failed to insert picks for %s", sid

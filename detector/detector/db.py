@@ -23,11 +23,6 @@ def connect(settings: Settings):
     return conn
 
 
-def insert_picks(conn, sid: str, picks: Iterable[Tuple[float, float]]) -> None:
-    # Backward-compatible alias: write picks as event detections.
-    _insert_time_windows(conn, sid, picks)
-
-
 def insert_phase_picks(
     conn,
     sid: str,
@@ -66,23 +61,6 @@ def insert_event_detections(
     sid: str,
     detections: Iterable[Tuple[float, float]],
 ) -> None:
-    _insert_time_windows(conn, sid, detections)
-
-
-def insert_phase_detections(
-    conn,
-    sid: str,
-    detections: Iterable[Tuple[float, float]],
-) -> None:
-    # Backward-compatible alias.
-    insert_event_detections(conn, sid, detections)
-
-
-def _insert_time_windows(
-    conn,
-    sid: str,
-    windows: Iterable[Tuple[float, float]],
-) -> None:
     sql = (
         "INSERT INTO event_detections (ts_on, ts_off, net, sta, loc, chan) VALUES %s "
         "ON CONFLICT DO NOTHING"
@@ -95,7 +73,7 @@ def _insert_time_windows(
     net, sta, loc, chan = parsed
 
     rows: List[Tuple[datetime, datetime, str, str, str, str]] = []
-    for t_on, t_off in windows:
+    for t_on, t_off in detections:
         ts_on = datetime.fromtimestamp(t_on, tz=timezone.utc)
         ts_off = datetime.fromtimestamp(t_off, tz=timezone.utc)
         row = (ts_on, ts_off, net, sta, loc, chan)
