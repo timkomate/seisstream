@@ -104,7 +104,9 @@ def replay_records(
         try:
             routing_key = build_routing_key(msr.sourceid)
         except Exception:
-            logging.exception("Unable to derive routing key from sourceid=%s", msr.sourceid)
+            logging.exception(
+                "Unable to derive routing key from sourceid=%s", msr.sourceid
+            )
             raise
 
         if routing_key != last_routing_key:
@@ -198,7 +200,9 @@ def main() -> None:
     channel = connection.channel()
 
     if args.exchange:
-        channel.exchange_declare(exchange=args.exchange, exchange_type="topic", durable=True)
+        channel.exchange_declare(
+            exchange=args.exchange, exchange_type="topic", durable=True
+        )
 
     try:
         published = replay_records(
