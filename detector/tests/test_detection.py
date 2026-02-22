@@ -21,11 +21,17 @@ def test_decode_mseed_calls_add_buffer(monkeypatch):
 def test_detect_sta_lta_no_triggers(monkeypatch):
     segment = {"samples": np.array([1.0, 2.0]), "samprate": 10.0, "start": 100.0}
 
-    monkeypatch.setattr(detection_mod, "preprocess_trace", lambda *args, **kwargs: np.array([0.0]))
-    monkeypatch.setattr(detection_mod, "classic_sta_lta", lambda *args, **kwargs: np.array([0.0]))
+    monkeypatch.setattr(
+        detection_mod, "preprocess_trace", lambda *args, **kwargs: np.array([0.0])
+    )
+    monkeypatch.setattr(
+        detection_mod, "classic_sta_lta", lambda *args, **kwargs: np.array([0.0])
+    )
     monkeypatch.setattr(detection_mod, "trigger_onset", lambda *args, **kwargs: [])
 
-    picks = detection_mod.detect_sta_lta(segment, "XX.TEST..BHZ", 0.1, 10.0, 6.0, 20.0, 2.5, 0.5)
+    picks = detection_mod.detect_sta_lta(
+        segment, "XX.TEST..BHZ", 0.1, 10.0, 6.0, 20.0, 2.5, 0.5
+    )
 
     assert picks == []
 
@@ -33,10 +39,18 @@ def test_detect_sta_lta_no_triggers(monkeypatch):
 def test_detect_sta_lta_triggers(monkeypatch):
     segment = {"samples": np.array([1.0, 2.0]), "samprate": 10.0, "start": 100.0}
 
-    monkeypatch.setattr(detection_mod, "preprocess_trace", lambda *args, **kwargs: np.array([0.0]))
-    monkeypatch.setattr(detection_mod, "classic_sta_lta", lambda *args, **kwargs: np.array([0.0]))
-    monkeypatch.setattr(detection_mod, "trigger_onset", lambda *args, **kwargs: [(10, 20), (25, 30)])
+    monkeypatch.setattr(
+        detection_mod, "preprocess_trace", lambda *args, **kwargs: np.array([0.0])
+    )
+    monkeypatch.setattr(
+        detection_mod, "classic_sta_lta", lambda *args, **kwargs: np.array([0.0])
+    )
+    monkeypatch.setattr(
+        detection_mod, "trigger_onset", lambda *args, **kwargs: [(10, 20), (25, 30)]
+    )
 
-    picks = detection_mod.detect_sta_lta(segment, "XX.TEST..BHZ", 0.1, 10.0, 6.0, 20.0, 2.5, 0.5)
+    picks = detection_mod.detect_sta_lta(
+        segment, "XX.TEST..BHZ", 0.1, 10.0, 6.0, 20.0, 2.5, 0.5
+    )
 
     assert picks == [(101.0, 102.0), (102.5, 103.0)]

@@ -173,6 +173,7 @@ def test_insert_phase_picks_without_score_sets_none(monkeypatch):
     _ts, _phase, score, _net, _sta, _loc, _chan = calls["rows"][0]
     assert score is None
 
+
 def test_insert_empty_phase_picks(monkeypatch):
     called = False
 
@@ -201,4 +202,3 @@ def test_insert_phase_picks_invalid_sid_no_call(monkeypatch):
     db_mod.insert_phase_picks(conn, "BAD", [(100.0, "P", 0.9)])
 
     assert called is False
-

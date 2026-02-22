@@ -12,7 +12,9 @@ from detector.seisbench_backend import SeisBenchConfig, SeisBenchPredictor
 class _FakeModel:
     def __init__(self, in_samples: int = 4, classify_result=None):
         self.in_samples = in_samples
-        self.classify_result = classify_result or SimpleNamespace(picks=[], detections=[])
+        self.classify_result = classify_result or SimpleNamespace(
+            picks=[], detections=[]
+        )
         self.device = None
         self.eval_called = False
         self.classify_calls = 0
@@ -87,8 +89,12 @@ def test_build_multichannel_window_alignment_padding(monkeypatch):
 
     assert common_end == 4.0
     assert window.shape == (2, 4)
-    np.testing.assert_array_equal(window[0], np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32))
-    np.testing.assert_array_equal(window[1], np.array([0.0, 10.0, 20.0, 30.0], dtype=np.float32))
+    np.testing.assert_array_equal(
+        window[0], np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+    )
+    np.testing.assert_array_equal(
+        window[1], np.array([0.0, 10.0, 20.0, 30.0], dtype=np.float32)
+    )
 
 
 def test_build_stream_sets_trace_metadata(monkeypatch):
@@ -143,7 +149,9 @@ def test_predict_multichannel_filters_and_sorts_results(monkeypatch):
         start_time=SimpleNamespace(timestamp=15.0),
         end_time=SimpleNamespace(timestamp=16.0),
     )
-    det_invalid = SimpleNamespace(start_time=SimpleNamespace(timestamp=9.0), end_time=None)
+    det_invalid = SimpleNamespace(
+        start_time=SimpleNamespace(timestamp=9.0), end_time=None
+    )
     det_valid_early = SimpleNamespace(
         start_time=SimpleNamespace(timestamp=5.0),
         end_time=SimpleNamespace(timestamp=6.0),
@@ -157,7 +165,9 @@ def test_predict_multichannel_filters_and_sorts_results(monkeypatch):
     _install_fake_seisbench(monkeypatch, model)
     predictor = SeisBenchPredictor(SeisBenchConfig())
 
-    segments = [{"samples": np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32), "end": 4.0}]
+    segments = [
+        {"samples": np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32), "end": 4.0}
+    ]
     channels = ["XX.STA..HHZ"]
 
     picks, detections = predictor.predict_multichannel(segments, channels, samprate=1.0)
