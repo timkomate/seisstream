@@ -39,6 +39,15 @@ flowchart TB
 
   classDef src fill:#eef,stroke:#557;
   style BG fill:#ffffff,stroke:#cccccc,stroke-width:2px,rx:12,ry:12;
+
+  classDef connector fill:#e8f7ef,stroke:#2f855a,color:#111;
+  classDef consumer fill:#fff7e6,stroke:#b7791f,color:#111;
+  classDef detector fill:#fdecef,stroke:#c53030,color:#111;
+  classDef locator fill:#edf2ff,stroke:#5a67d8,color:#111;
+
+  class CON1,CON2,CON3 connector;
+  class CNS1,CNS2,CNS3 consumer;
+  class DET detector;
 ```
 
 ## Repository Layout
