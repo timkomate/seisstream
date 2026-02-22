@@ -1,6 +1,6 @@
 # seisstream
 
-Seisstream streams MiniSEED from SeedLink into RabbitMQ, stores waveform samples in TimescaleDB, and runs event/phase detection from AMQP. The core pieces are a C  (`connector`, `consumer`) with a earthquake `detector` written in Python.
+Seisstream streams MiniSEED from SeedLink into RabbitMQ, stores waveform samples in TimescaleDB, and runs event/phase detection from AMQP. The core components are C services (`connector`, `consumer`) plus a Python earthquake `detector`.
 
 ## Architecture
 ```mermaid
@@ -16,18 +16,18 @@ flowchart TB
       SL3[SeedLink Server #3]:::src
     end
 
-    SL1 -->|SeedLink/MiniSEED| CON1[Connector #1<br/>libslink → AMQP]
-    SL2 -->|SeedLink/MiniSEED| CON2[Connector #2<br/>libslink → AMQP]
-    SL3 -->|SeedLink/MiniSEED| CON3[Connector #3<br/>libslink → AMQP]
+    SL1 -->|SeedLink/MiniSEED| CON1[Connector #1<br/>libslink -> AMQP]
+    SL2 -->|SeedLink/MiniSEED| CON2[Connector #2<br/>libslink -> AMQP]
+    SL3 -->|SeedLink/MiniSEED| CON3[Connector #3<br/>libslink -> AMQP]
 
     CON1 -->|AMQP publish| MQ[(AMQP Broker<br/>RabbitMQ)]
     CON2 -->|AMQP publish| MQ
     CON3 -->|AMQP publish| MQ
 
-    MQ -->|AMQP consume| CNS1[Consumer #1<br/>AMQP → libmseed]
-    MQ -->|AMQP consume| CNS2[Consumer #2<br/>AMQP → libmseed]
-    MQ -->|AMQP consume| CNS3[Consumer #3<br/>AMQP → libmseed]
-    MQ -->|AMQP consume| DET[Detector<br/>AMQP → detections + phase picks]
+    MQ -->|AMQP consume| CNS1[Consumer #1<br/>AMQP -> libmseed]
+    MQ -->|AMQP consume| CNS2[Consumer #2<br/>AMQP -> libmseed]
+    MQ -->|AMQP consume| CNS3[Consumer #3<br/>AMQP -> libmseed]
+    MQ -->|AMQP consume| DET[Detector<br/>AMQP -> detections + phase picks]
 
     CNS1 -->|bulk load| PG[(Timescale DB)]
     CNS2 -->|bulk load| PG
@@ -39,9 +39,6 @@ flowchart TB
 
   classDef src fill:#eef,stroke:#557;
   style BG fill:#ffffff,stroke:#cccccc,stroke-width:2px,rx:12,ry:12;
-
-
-
 ```
 
 ## Repository Layout
@@ -50,28 +47,24 @@ flowchart TB
 - `detector/`: Python detector that consumes MiniSEED from AMQP and writes `event_detections` and `phase_picks`.
 - `tools/publish_mseed/`: synthetic MiniSEED publisher for functional testing.
 
-## Detector Modes
-- `sta_lta`: classic trigger detector, outputs event windows.
-- `seisbench`: SeisBench EQTransformer (pretrained), outputs event windows and phase picks.
-
 ## Quick Start (Docker)
 Prerequisites: Docker and Docker Compose.
 
-1. Create local environment file and set deployment values:
+1. Create a local environment file and set deployment values:
    ```sh
    cp .env.example .env
    ```
-2. Create stream list file:
+2. Create the stream list file used by the connector container:
    ```sh
    cp connector/streamlist.conf.example streamlist.conf
    ```
-   Then edit `streamlist.conf` and selectors. Set `SEEDLINK_HOST` in the .env file as needed.
+   Then edit `streamlist.conf` (selectors/stations) and set `SEEDLINK_HOST` in `.env` as needed.
 3. Start core services:
    ```sh
    docker compose up -d rabbitmq timescaledb
    docker compose up -d connector consumer grafana
    ```
-4. Start detector:
+4. Start the detector:
    ```sh
    docker compose up -d detector
    ```
@@ -82,9 +75,23 @@ Notes:
   ```sh
   docker compose config
   ```
-- Grafana is available at `http://localhost:3000` (credentials from `docker-compose.yml` or `.env`).
 
-## Demos
+## Verify It Works
+Check service status and logs after startup:
+
+```sh
+docker compose ps
+docker compose logs -f connector consumer detector
+```
+
+Expected behavior:
+- `connector` logs show packets received from SeedLink and AMQP publishes.
+- `consumer` logs show AMQP consumption and inserts/bulk loads into PostgreSQL.
+- `detector` logs show detector startup and detections/picks (depending on mode and incoming data).
+
+Grafana:
+- Default URL: `http://localhost:3000`
+- Credentials: `GRAFANA_USER` / `GRAFANA_PASSWORD` from `.env` (or defaults in `docker-compose.yml`)
 
 System run demo:
 
@@ -99,6 +106,37 @@ Real event detection example from station `GE.PSZ`, using SeisBench `EQTransform
 The video is shown at `2x` speed, and the event is correctly detected.
 Purple annotations indicate the first `P` and `S` wave arrivals for the main event of the Szarvas, Hungary earthquake swarm on 19 August 2023.
 
+https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
+## Monitoring (RabbitMQ Metrics)
+This project supports RabbitMQ metrics via Prometheus and Grafana using a Compose override.
+
+Monitoring files:
+- `docker-compose.monitoring.yml`: monitoring services and overrides.
+- `monitoring/rabbitmq/rabbitmq.conf`: RabbitMQ Prometheus settings.
+- `monitoring/rabbitmq/enabled_plugins`: enables `rabbitmq_prometheus` plugin.
+- `monitoring/prometheus/prometheus.yml`: Prometheus scrape configuration.
+- `grafana/provisioning/datasources/prometheus.yml`: Grafana Prometheus datasource.
+
+Start with monitoring enabled:
+```sh
+docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+```
+
+Monitoring endpoints:
+- RabbitMQ metrics: `http://localhost:15692/metrics`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
+
+Verify scrape targets:
+```sh
+curl -s http://localhost:15692/metrics | head
+curl -s http://localhost:9090/api/v1/targets | jq .
+```
+
+Notes:
+- The monitoring override extends services from `docker-compose.yml`; core app behavior is unchanged.
+- Queue-level metrics are enabled (`prometheus.return_per_object_metrics = true`), which can increase cardinality in very large deployments.
+- No alert rules or preloaded RabbitMQ dashboard are included. Create these in Prometheus/Grafana as needed.
 https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
 
 ## Configuration
@@ -138,8 +176,29 @@ GRAFANA_USER=admin
 GRAFANA_PASSWORD=admin
 ```
 
+## Detector Modes
+- `sta_lta`: classic trigger detector, outputs event windows.
+- `seisbench`: SeisBench EQTransformer (pretrained), outputs event windows and phase picks.
+
+## Demos
+
+System run demo:
+
+https://github.com/user-attachments/assets/6d3b54e7-188c-432f-aa9c-4b9c00ab6a9b
+
+Synthetic testing demo (STA/LTA detector mode):
+
+https://github.com/user-attachments/assets/13190d10-a5c8-46b4-be4e-47f160ae5256
+
+### Real Event Detection Demo
+Real event detection example from station `GE.PSZ`, using SeisBench `EQTransformer` (`--detector-mode seisbench --sb-pretrained original`).
+The video is shown at `2x` speed, and the event is correctly detected.
+Purple annotations indicate the first `P` and `S` wave arrivals for the main event of the Szarvas, Hungary earthquake swarm on 19 August 2023.
+
+https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
+
 ## Synthetic Testing
-Publish synthetic MiniSEED into RabbitMQ to exercise consumer and detector without SeedLink.
+You can publish synthetic MiniSEED into RabbitMQ to exercise consumer and detector without SeedLink.
 
 ```sh
 python3 tools/publish_mseed/publish_mseed.py --host 127.0.0.1 --exchange stations --event --event-probability 0.1 --event-amplitude 2500 --event-duration 20 --event-frequency 0.6
@@ -150,7 +209,9 @@ Docker option:
 COMPOSE_PROFILES=tools docker compose run --rm publisher --host rabbitmq --exchange stations --count 3
 ```
 
-## Build (Native)
+## Native Development
+
+### Build
 Prerequisites: `libslink`, `librabbitmq`, `libmseed`, and `libpq` headers/libs available to your compiler.
 
 ```sh
@@ -159,8 +220,8 @@ make connector  # builds only connector
 make consumer   # builds only consumer
 ```
 
-## Detector Native Run (Without Docker)
-Use this when running detector directly on host instead of Compose.
+### Detector Native Run
+Use this when running the detector directly on the host instead of Compose.
 
 ```sh
 cd detector
@@ -206,18 +267,20 @@ python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1
 ### Consumer (AMQP -> TimescaleDB)
 ```sh
 ./build/consumer [opts]
-  -h <amqp-host>      (default 127.0.0.1)
-  -p <amqp-port>      (default 5672)
-  -u <amqp-user>      (default guest)
-  -P <amqp-pass>      (default guest)
-  -v <amqp-vhost>     (default /)
-  -q <queue>          (default binq)
-  --prefetch <n>      (default 10)
-  --pg-host <host>    (default 192.168.0.106)
-  --pg-port <port>    (default 5432)
-  --pg-user <user>    (default admin)
-  --pg-password <pw>  (default my-secret-pw)
-  --pg-db <name>      (default seismic)
+  -h <amqp-host>         (default 127.0.0.1)
+  -p <amqp-port>         (default 5672)
+  -u <amqp-user>         (default guest)
+  -P <amqp-pass>         (default guest)
+  -v <amqp-vhost>        (default /)
+  --amqp-exchange <ex>   Exchange to consume from (default empty = AMQP default)
+  --amqp-binding-key <k> Key to bind queue when using an exchange (default queue name)
+  -q <queue>             (default binq)
+  --prefetch <n>         (default 10)
+  --pg-host <host>       (native default localhost)
+  --pg-port <port>       (default 5432)
+  --pg-user <user>       (native default admin)
+  --pg-password <pw>     (native default my-secret-pw`)
+  --pg-db <name>         (default seismic)
 ```
 
 ### Detector (AMQP -> Detections + Picks)
@@ -234,7 +297,13 @@ python -m detector.main [opts]
   --prefetch <n>                 (default 50)
   --buffer-seconds <secs>        (default 120)
   --detect-every-seconds <secs>  (default 15)
-  --pick-filter-seconds <secs>   (default 2)
+  --preprocess-fmin <hz>         (default 0.1)
+  --preprocess-fmax <hz>         (default 10.0)
+  --sta-seconds <secs>           (default 6.0)
+  --lta-seconds <secs>           (default 20.0)
+  --trigger-on <v>               (default 2.5)
+  --trigger-off <v>              (default 0.5)
+  --pick-filter-seconds <secs>   (default 2.0)
   --detector-mode <mode>         (sta_lta or seisbench; default sta_lta)
   --sb-pretrained <name>         (default original)
   --sb-threshold-p <value>       (default 0.3)
@@ -262,6 +331,7 @@ python -m detector.main [opts]
 - Use `docker compose logs -f connector consumer detector` to inspect runtime errors.
 
 ## TODO
-- GPU-enabled detector runtime is not verified in this repository by default and yet.
-- CI runs detector on CPU only. GPU/CUDA detector execution is not validated in CI.
+- GPU-enabled detector runtime is not verified by default in this repository.
+- CI runs the detector on CPU only. GPU/CUDA detector execution is not validated in CI.
 - Add more unit and functional testing.
+- Add a minimal end-to-end test with sample MiniSEED input.
