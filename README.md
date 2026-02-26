@@ -71,7 +71,10 @@ flowchart TB
 - `tools/publish_mseed/`: synthetic MiniSEED publisher for functional testing.
 
 ## Quick Start (Docker)
-Prerequisites: Docker and Docker Compose.
+Prerequisites:
+- Docker 20.10+ and Docker Compose v2+
+- Minimum 4GB RAM (8GB recommended for ML detector mode)
+- 2+ CPU cores
 
 1. Create a local environment file and set deployment values:
    ```sh
@@ -82,14 +85,10 @@ Prerequisites: Docker and Docker Compose.
    cp connector/streamlist.conf.example streamlist.conf
    ```
    Then edit `streamlist.conf` (selectors/stations) and set `SEEDLINK_HOST` in `.env` as needed.
+
 3. Start core services:
    ```sh
-   docker compose up -d rabbitmq timescaledb
-   docker compose up -d connector consumer grafana
-   ```
-4. Start the detector:
-   ```sh
-   docker compose up -d detector
+   docker compose up -d
    ```
 
 Notes:
@@ -115,6 +114,8 @@ Expected behavior:
 Grafana:
 - Default URL: `http://localhost:3000`
 - Credentials: `GRAFANA_USER` / `GRAFANA_PASSWORD` from `.env` (or defaults in `docker-compose.yml`)
+
+## Demos
 
 System run demo:
 
@@ -160,7 +161,6 @@ Notes:
 - The monitoring override extends services from `docker-compose.yml`; core app behavior is unchanged.
 - Queue-level metrics are enabled (`prometheus.return_per_object_metrics = true`), which can increase cardinality in very large deployments.
 - No alert rules or preloaded RabbitMQ dashboard are included. Create these in Prometheus/Grafana as needed.
-https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
 
 ## Configuration
 The Docker setup uses these environment variable groups:
@@ -202,23 +202,6 @@ GRAFANA_PASSWORD=admin
 ## Detector Modes
 - `sta_lta`: classic trigger detector, outputs event windows.
 - `seisbench`: SeisBench EQTransformer (pretrained), outputs event windows and phase picks.
-
-## Demos
-
-System run demo:
-
-https://github.com/user-attachments/assets/6d3b54e7-188c-432f-aa9c-4b9c00ab6a9b
-
-Synthetic testing demo (STA/LTA detector mode):
-
-https://github.com/user-attachments/assets/13190d10-a5c8-46b4-be4e-47f160ae5256
-
-### Real Event Detection Demo
-Real event detection example from station `GE.PSZ`, using SeisBench `EQTransformer` (`--detector-mode seisbench --sb-pretrained original`).
-The video is shown at `2x` speed, and the event is correctly detected.
-Purple annotations indicate the first `P` and `S` wave arrivals for the main event of the Szarvas, Hungary earthquake swarm on 19 August 2023.
-
-https://github.com/user-attachments/assets/529487ab-2f16-4b82-bb36-e4a8cd2541a7
 
 ## Synthetic Testing
 You can publish synthetic MiniSEED into RabbitMQ to exercise consumer and detector without SeedLink.
@@ -299,10 +282,10 @@ python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1
   --amqp-binding-key <k> Key to bind queue when using an exchange (default queue name)
   -q <queue>             (default binq)
   --prefetch <n>         (default 10)
-  --pg-host <host>       (native default localhost)
+  --pg-host <host>       (default localhost)
   --pg-port <port>       (default 5432)
-  --pg-user <user>       (native default admin)
-  --pg-password <pw>     (native default my-secret-pw`)
+  --pg-user <user>       (default seis)
+  --pg-password <pw>     (default seis)
   --pg-db <name>         (default seismic)
 ```
 
@@ -343,9 +326,11 @@ python -m detector.main [opts]
 
 ## Database Schema
 `db/init/01_schema.sql` defines three TimescaleDB hypertables:
-- `seismic_samples`: raw waveform samples.
-- `event_detections`: event windows (`ts_on`, `ts_off`).
-- `phase_picks`: pick timestamp (`ts`), phase (`P`/`S`).
+- `seismic_samples`: raw waveform samples (network, station, location, channel, sample_rate, samples, start_time)
+- `event_detections`: event windows (network, station, location, channel, ts_on, ts_off, trigger_value)
+- `phase_picks`: phase picks (network, station, location, channel, ts, phase, confidence)
+
+See [db/init/01_schema.sql](db/init/01_schema.sql) for full schema definitions.
 
 ## Troubleshooting
 - Connector exits quickly: verify SeedLink credentials and `SEEDLINK_HOST`.
