@@ -9,8 +9,7 @@ def test_parse_args_defaults(monkeypatch) -> None:
     monkeypatch.setattr(sys, "argv", ["locator"])
     settings = parse_args()
     assert settings.poll_seconds == 5.0
-    assert settings.lookback_minutes == 10
-    assert settings.batch_size == 500
+    assert settings.lookback_seconds == 600
     assert settings.log_level == "INFO"
     assert settings.pg_dbname == "seismic"
 
@@ -23,8 +22,8 @@ def test_parse_args_overrides(monkeypatch) -> None:
             "locator",
             "--poll-seconds",
             "2.5",
-            "--lookback-minutes",
-            "5",
+            "--lookback-seconds",
+            "300",
             "--min-stations",
             "3",
             "--log-level",
@@ -35,8 +34,7 @@ def test_parse_args_overrides(monkeypatch) -> None:
     )
     settings = parse_args()
     assert settings.poll_seconds == 2.5
-    assert settings.lookback_minutes == 5
+    assert settings.lookback_seconds == 300
     assert settings.min_stations == 3
     assert settings.log_level == "DEBUG"
     assert settings.pg_dbname == "customdb"
-
