@@ -4,9 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from locator.associator import Event
 from locator.geometry import compute_travel_time, haversine_distance
-from locator.models import Pick, Station
+from locator.models import Event, Pick, Station
 from locator.solver import estimate_origin
 
 

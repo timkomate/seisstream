@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from .models import Pick, Station
+from .models import OriginEstimate, Pick, Station
 from .settings import Settings
 
 
@@ -72,6 +72,107 @@ def fetch_picks_since(
         rows = cur.fetchall()
 
     return _rows_to_picks(rows)
+
+
+def upsert_origin(conn, estimate: OriginEstimate) -> int:
+    query = """
+        INSERT INTO origins (
+            origin_ts,
+            lat,
+            lon,
+            depth_km,
+            rms_seconds,
+            gap_deg,
+            n_picks,
+            n_stations,
+            status,
+            association_key
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'preliminary', %s)
+        ON CONFLICT (association_key)
+        DO UPDATE SET
+            origin_ts = EXCLUDED.origin_ts,
+            lat = EXCLUDED.lat,
+            lon = EXCLUDED.lon,
+            depth_km = EXCLUDED.depth_km,
+            rms_seconds = EXCLUDED.rms_seconds,
+            gap_deg = EXCLUDED.gap_deg,
+            n_picks = EXCLUDED.n_picks,
+            n_stations = EXCLUDED.n_stations,
+            updated_at = now()
+        RETURNING id
+    """
+    params = (
+        estimate.origin_ts,
+        estimate.lat,
+        estimate.lon,
+        estimate.depth_km,
+        estimate.rms_seconds,
+        estimate.azimuthal_gap_deg,
+        len(estimate.arrivals),
+        estimate.used_stations,
+        estimate.association_key,
+    )
+    with conn.cursor() as cur:
+        cur.execute(query, params)
+        row = cur.fetchone()
+    return int(row[0])
+
+
+def replace_origin_arrivals(conn, origin_id: int, estimate: OriginEstimate) -> None:
+    delete_query = "DELETE FROM origin_arrivals WHERE origin_id = %s"
+    insert_query = """
+        INSERT INTO origin_arrivals (
+            origin_id,
+            phase_pick_id,
+            phase,
+            ts,
+            net,
+            sta,
+            loc,
+            chan,
+            tt_pred_seconds,
+            residual_seconds,
+            distance_km,
+            azimuth_deg
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """
+
+    with conn.cursor() as cur:
+        cur.execute(delete_query, (origin_id,))
+        for arr in estimate.arrivals:
+            cur.execute(
+                insert_query,
+                (
+                    origin_id,
+                    arr.pick.id,
+                    arr.pick.phase,
+                    arr.pick.ts,
+                    arr.pick.net,
+                    arr.pick.sta,
+                    arr.pick.loc,
+                    arr.pick.chan,
+                    arr.predicted_tt_seconds,
+                    arr.residual_seconds,
+                    arr.distance_km,
+                    arr.azimuth_deg,
+                ),
+            )
+
+
+def set_origin_final(conn, origin_id: int) -> bool:
+    query = """
+        UPDATE origins
+        SET status = 'final',
+            updated_at = now()
+        WHERE id = %s
+        RETURNING id
+    """
+    with conn.cursor() as cur:
+        cur.execute(query, (origin_id,))
+        row = cur.fetchone()
+    return row is not None
 
 
 def _rows_to_picks(rows) -> list[Pick]:

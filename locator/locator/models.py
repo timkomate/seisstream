@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -33,3 +31,31 @@ class Pick:
     def station_key(self) -> tuple[str, str, str]:
         return (self.net, self.sta, self.loc)
 
+
+@dataclass(frozen=True)
+class Event:
+    picks: list[Pick]
+    earliest_pick_time: datetime
+    association_key: str
+
+
+@dataclass(frozen=True)
+class ArrivalResidual:
+    pick: Pick
+    distance_km: float
+    azimuth_deg: float
+    predicted_tt_seconds: float
+    residual_seconds: float
+
+
+@dataclass(frozen=True)
+class OriginEstimate:
+    association_key: str
+    origin_ts: datetime
+    lat: float
+    lon: float
+    depth_km: float
+    rms_seconds: float
+    azimuthal_gap_deg: float
+    used_stations: int
+    arrivals: list[ArrivalResidual]

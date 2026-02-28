@@ -1,20 +1,10 @@
-from __future__ import annotations
-
 import hashlib
 import logging
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from .models import Pick
+from .models import Event, Pick
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class Event:
-    picks: list[Pick]
-    earliest_pick_time: datetime
-    association_key: str
 
 
 def _calculate_association_key(picks: list[Pick]) -> str:

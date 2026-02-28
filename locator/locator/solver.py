@@ -1,39 +1,12 @@
-from __future__ import annotations
-
 import logging
-from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import numpy as np
 
-from .associator import Event
 from .geometry import azimuth, azimuthal_gap, compute_travel_time, haversine_distance
-from .models import Pick, Station
+from .models import ArrivalResidual, Event, OriginEstimate, Pick, Station
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class ArrivalResidual:
-    pick: Pick
-    distance_km: float
-    azimuth_deg: float
-    predicted_tt_seconds: float
-    residual_seconds: float
-
-
-@dataclass(frozen=True)
-class OriginEstimate:
-    association_key: str
-    origin_ts: datetime
-    lat: float
-    lon: float
-    depth_km: float
-    rms_seconds: float
-    azimuthal_gap_deg: float
-    used_stations: int
-    arrivals: list[ArrivalResidual]
-
 
 def estimate_origin(
     event: Event,
