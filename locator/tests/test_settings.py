@@ -10,6 +10,7 @@ def test_parse_args_defaults(monkeypatch) -> None:
     settings = parse_args()
     assert settings.poll_seconds == 5.0
     assert settings.lookback_seconds == 600
+    assert settings.min_pick_score == 0.0
     assert settings.log_level == "INFO"
     assert settings.pg_dbname == "seismic"
 
@@ -26,6 +27,8 @@ def test_parse_args_overrides(monkeypatch) -> None:
             "300",
             "--min-stations",
             "3",
+            "--min-pick-score",
+            "0.7",
             "--log-level",
             "debug",
             "--pg-db",
@@ -36,5 +39,6 @@ def test_parse_args_overrides(monkeypatch) -> None:
     assert settings.poll_seconds == 2.5
     assert settings.lookback_seconds == 300
     assert settings.min_stations == 3
+    assert settings.min_pick_score == 0.7
     assert settings.log_level == "DEBUG"
     assert settings.pg_dbname == "customdb"

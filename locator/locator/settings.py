@@ -10,6 +10,7 @@ class Settings:
     lookback_seconds: int = 600
     association_window_seconds: float = 8.0
     min_stations: int = 4
+    min_pick_score: float = 0.0
     vp_km_s: float = 6.0
     max_residual_seconds: float = 3.0
     log_level: str = "INFO"
@@ -26,6 +27,7 @@ def parse_args() -> Settings:
     parser.add_argument("--lookback-seconds", type=int, default=600)
     parser.add_argument("--association-window-seconds", type=float, default=8.0)
     parser.add_argument("--min-stations", type=int, default=4)
+    parser.add_argument("--min-pick-score", type=float, default=0.0)
     parser.add_argument("--vp-km-s", type=float, default=6.0)
     parser.add_argument("--max-residual-seconds", type=float, default=3.0)
     parser.add_argument("--log-level", default="INFO")
@@ -41,6 +43,7 @@ def parse_args() -> Settings:
         lookback_seconds=args.lookback_seconds,
         association_window_seconds=args.association_window_seconds,
         min_stations=args.min_stations,
+        min_pick_score=args.min_pick_score,
         vp_km_s=args.vp_km_s,
         max_residual_seconds=args.max_residual_seconds,
         log_level=args.log_level.upper(),
