@@ -38,13 +38,13 @@ jobs:
           sudo apt-get install -y cppcheck
 
       - name: Ruff lint
-        run: ruff check detector tools/publish_mseed
+        run: ruff check detector locator tools/publish_mseed tools/replay_mseed
 
       - name: Ruff format check
-        run: ruff format --check detector tools/publish_mseed
+        run: ruff format --check detector locator tools/publish_mseed tools/replay_mseed
 
       - name: Bandit security scan
-        run: bandit -q -r detector tools/publish_mseed -x detector/tests -s B105
+        run: bandit -q -r detector locator tools/publish_mseed tools/replay_mseed -x detector/tests,locator/tests -s B105
 
       - name: C static analysis (cppcheck)
         run: |
@@ -69,7 +69,7 @@ jobs:
         run: docker compose version
 
       - name: Build test images once
-        run: docker compose build consumer publisher detector connector
+        run: docker compose build consumer publisher detector connector locator
 
       - name: Run detector unit tests in detector image
         run: |
@@ -78,11 +78,21 @@ jobs:
             pytest /app/detector/tests --cov=/app/detector/detector --cov-report=term-missing -q
           "
 
+      - name: Run locator unit tests in locator image
+        run: |
+          docker compose run --rm --no-deps locator sh -lc "
+            python -m pip install --no-cache-dir -r /app/locator/requirements-ci.txt &&
+            pytest /app/locator/tests --cov=/app/locator/locator --cov-report=term-missing -q
+          "
+
       - name: Run multi-stream ingest test
         run: SKIP_COMPOSE_BUILD=1 bash tests/system/run_functional_tests.sh
 
       - name: Run detector e2e test
         run: SKIP_COMPOSE_BUILD=1 bash tests/system/run_detector_event_test.sh
+
+      - name: Run locator e2e test
+        run: SKIP_COMPOSE_BUILD=1 bash tests/system/run_locator_origin_test.sh
 
       - name: Dump logs on failure
         if: failure()

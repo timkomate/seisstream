@@ -1,6 +1,7 @@
 build/
 
 .venv-eqt
+.venv/
 seisbench/
 notebooks/
 __pycache__/

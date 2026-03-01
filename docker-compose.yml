@@ -125,6 +125,42 @@ services:
       - --sb-pretrained
       - ${DETECTOR_SB_PRETRAINED:-original}
 
+  locator:
+    build:
+      context: .
+      target: locator
+    container_name: seisstream-locator
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    command:
+      - python
+      - /app/locator/main.py
+      - --poll-seconds
+      - ${LOCATOR_POLL_SECONDS:-5.0}
+      - --lookback-seconds
+      - ${LOCATOR_LOOKBACK_SECONDS:-600}
+      - --association-window-seconds
+      - ${LOCATOR_ASSOCIATION_WINDOW_SECONDS:-8.0}
+      - --min-stations
+      - ${LOCATOR_MIN_STATIONS:-4}
+      - --min-pick-score
+      - ${LOCATOR_MIN_PICK_SCORE:-0.0}
+      - --vp-km-s
+      - ${LOCATOR_VP_KM_S:-6.0}
+      - --max-residual-seconds
+      - ${LOCATOR_MAX_RESIDUAL_SECONDS:-3.0}
+      - --pg-host
+      - timescaledb
+      - --pg-user
+      - ${PGUSER:-seis}
+      - --pg-password
+      - ${PGPASSWORD:-seis}
+      - --pg-db
+      - ${PGDATABASE:-seismic}
+      - --log-level
+      - ${LOCATOR_LOG_LEVEL:-INFO}
+
   publisher:
     build:
       context: .
