@@ -82,10 +82,7 @@ def associate_picks(
             station_count,
             phase_count,
         )
-        if (
-            station_count >= min_stations
-            and phase_count >= min_phases
-        ):
+        if station_count >= min_stations and phase_count >= min_phases:
             association_key = _calculate_association_key(event_picks)
             events.append(
                 Event(
@@ -116,5 +113,7 @@ def associate_picks(
         )
         i += 1
 
-    logger.info("Association complete: events=%s used_picks=%s", len(events), len(used_pick_ids))
+    logger.info(
+        "Association complete: events=%s used_picks=%s", len(events), len(used_pick_ids)
+    )
     return events

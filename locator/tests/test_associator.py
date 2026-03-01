@@ -6,7 +6,9 @@ from locator.associator import associate_picks
 from locator.models import Pick
 
 
-def _pick(pid: int, ts: datetime, sta: str, phase: str = "P", score: float = 0.9) -> Pick:
+def _pick(
+    pid: int, ts: datetime, sta: str, phase: str = "P", score: float = 0.9
+) -> Pick:
     return Pick(
         id=pid,
         ts=ts,
@@ -107,7 +109,7 @@ def test_associate_picks_filters_by_min_score() -> None:
         _pick(3, t0 + timedelta(seconds=2.0), "STA3", "P", 0.75),
         _pick(4, t0 + timedelta(seconds=3.0), "STA4", "P", 0.20),
     ]
-    
+
     events = associate_picks(
         picks,
         window_seconds=5.0,

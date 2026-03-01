@@ -8,6 +8,7 @@ from .models import ArrivalResidual, Event, OriginEstimate, Pick, Station
 
 logger = logging.getLogger(__name__)
 
+
 def estimate_origin(
     event: Event,
     stations: dict[tuple[str, str, str], Station],
