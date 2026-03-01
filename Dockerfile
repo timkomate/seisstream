@@ -77,3 +77,19 @@ RUN python -m pip install --no-cache-dir --prefer-binary -r /app/detector/requir
 COPY detector /app/detector
 
 CMD ["python", "-m", "detector.main", "--help"]
+
+FROM python:3.11-slim AS locator
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DEFAULT_TIMEOUT=120 \
+    PIP_RETRIES=10 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+COPY locator/requirements.txt /app/locator/requirements.txt
+RUN python -m pip install --no-cache-dir --prefer-binary -r /app/locator/requirements.txt
+
+COPY locator /app/locator
+
+CMD ["python", "/app/locator/main.py", "--help"]
