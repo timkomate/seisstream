@@ -91,6 +91,9 @@ jobs:
       - name: Run detector e2e test
         run: SKIP_COMPOSE_BUILD=1 bash tests/system/run_detector_event_test.sh
 
+      - name: Run locator e2e test
+        run: SKIP_COMPOSE_BUILD=1 bash tests/system/run_locator_origin_test.sh
+
       - name: Dump logs on failure
         if: failure()
         run: docker compose logs --no-color
