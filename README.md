@@ -68,6 +68,7 @@ flowchart TB
 - `connector/`: SeedLink client that forwards packets to RabbitMQ.
 - `consumer/`: AMQP consumer that parses MiniSEED (`libmseed`) and bulk-loads samples into TimescaleDB.
 - `detector/`: Python detector that consumes MiniSEED from AMQP and writes `event_detections` and `phase_picks`.
+- `locator/`: Python locator that calculates origins from phase picks and writes `origins` + `origin_arrivals`.
 - `tools/publish_mseed/`: synthetic MiniSEED publisher for functional testing.
 
 ## Quick Start (Docker)
@@ -103,13 +104,14 @@ Check service status and logs after startup:
 
 ```sh
 docker compose ps
-docker compose logs -f connector consumer detector
+docker compose logs -f connector consumer detector locator
 ```
 
 Expected behavior:
 - `connector` logs show packets received from SeedLink and AMQP publishes.
 - `consumer` logs show AMQP consumption and inserts/bulk loads into PostgreSQL.
 - `detector` logs show detector startup and detections/picks (depending on mode and incoming data).
+- `locator` logs show pick associations and origin writes.
 
 Grafana:
 - Default URL: `http://localhost:3000`
@@ -169,6 +171,7 @@ The Docker setup uses these environment variable groups:
 - AMQP routing: `AMQP_EXCHANGE`, `CONSUMER_AMQP_BINDING_KEY`, `DETECTOR_AMQP_BINDING_KEY`
 - SeedLink source: `SEEDLINK_HOST`
 - Detector runtime: `DETECTOR_MODE`, `DETECTOR_SB_PRETRAINED`
+- Locator runtime: `LOCATOR_POLL_SECONDS`, `LOCATOR_LOOKBACK_SECONDS`, `LOCATOR_ASSOCIATION_WINDOW_SECONDS`, `LOCATOR_MIN_STATIONS`, `LOCATOR_MIN_PICK_SCORE`, `LOCATOR_VP_KM_S`, `LOCATOR_MAX_RESIDUAL_SECONDS`, `LOCATOR_LOG_LEVEL`
 - Grafana admin: `GRAFANA_USER`, `GRAFANA_PASSWORD`
 
 Template (`.env.example`):
@@ -193,6 +196,16 @@ SEEDLINK_HOST=geofon.gfz-potsdam.de:18000
 # Detector runtime (Docker Compose detector service)
 DETECTOR_MODE=seisbench
 DETECTOR_SB_PRETRAINED=original
+
+# Locator
+LOCATOR_POLL_SECONDS=5.0
+LOCATOR_LOOKBACK_SECONDS=600
+LOCATOR_ASSOCIATION_WINDOW_SECONDS=8.0
+LOCATOR_MIN_STATIONS=4
+LOCATOR_MIN_PICK_SCORE=0.0
+LOCATOR_VP_KM_S=6.0
+LOCATOR_MAX_RESIDUAL_SECONDS=3.0
+LOCATOR_LOG_LEVEL=INFO
 
 # Grafana admin
 GRAFANA_USER=admin
@@ -241,6 +254,16 @@ python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1
 For SeisBench mode:
 ```sh
 python -m detector.main --host 127.0.0.1 --exchange stations --pg-host 127.0.0.1 --detector-mode seisbench --sb-pretrained original
+```
+
+### Locator Native Run
+```sh
+cd locator
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python main.py --pg-host 127.0.0.1 --pg-user seis --pg-password seis --pg-db seismic --log-level INFO
 ```
 
 ## CLI Reference
@@ -336,10 +359,11 @@ See [db/init/01_schema.sql](db/init/01_schema.sql) for full schema definitions.
 - Connector exits quickly: verify SeedLink credentials and `SEEDLINK_HOST`.
 - Consumer cannot connect: check `PGUSER`, `PGPASSWORD`, and `PGDATABASE`.
 - No data in DB: confirm `streamlist.conf`, `AMQP_EXCHANGE`, `CONSUMER_AMQP_BINDING_KEY`, and `DETECTOR_AMQP_BINDING_KEY`.
-- Use `docker compose logs -f connector consumer detector` to inspect runtime errors.
+- Use `docker compose logs -f connector consumer detector locator` to inspect runtime errors.
 
 ## TODO
-- GPU-enabled detector runtime is not verified by default in this repository.
-- CI runs the detector on CPU only. GPU/CUDA detector execution is not validated in CI.
-- Add more unit and functional testing.
-- Add a minimal end-to-end test with sample MiniSEED input.
+- Locator: add persisted incremental cursor/state so cycles process strictly new picks (not only lookback scans).
+- Locator: implement origin finalization policy (promote `preliminary` -> `final`) based on stability/quality criteria.
+- Locator: add multi-event and noisy-pick system tests (late picks, outliers, overlapping events).
+- Locator: improve association quality checks beyond pure time-window grouping.
+- Locator: add uncertainty metrics and better residual/outlier handling in the solver.
