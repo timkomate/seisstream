@@ -69,13 +69,20 @@ jobs:
         run: docker compose version
 
       - name: Build test images once
-        run: docker compose build consumer publisher detector connector
+        run: docker compose build consumer publisher detector connector locator
 
       - name: Run detector unit tests in detector image
         run: |
           docker compose run --rm --no-deps detector sh -lc "
             python -m pip install --no-cache-dir pytest pytest-cov &&
             pytest /app/detector/tests --cov=/app/detector/detector --cov-report=term-missing -q
+          "
+
+      - name: Run locator unit tests in locator image
+        run: |
+          docker compose run --rm --no-deps locator sh -lc "
+            python -m pip install --no-cache-dir -r /app/locator/requirements-ci.txt &&
+            pytest /app/locator/tests --cov=/app/locator/locator --cov-report=term-missing -q
           "
 
       - name: Run multi-stream ingest test
