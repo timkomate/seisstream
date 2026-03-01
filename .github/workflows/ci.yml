@@ -38,13 +38,13 @@ jobs:
           sudo apt-get install -y cppcheck
 
       - name: Ruff lint
-        run: ruff check detector tools/publish_mseed
+        run: ruff check detector locator tools/publish_mseed tools/replay_mseed
 
       - name: Ruff format check
-        run: ruff format --check detector tools/publish_mseed
+        run: ruff format --check detector locator tools/publish_mseed tools/replay_mseed
 
       - name: Bandit security scan
-        run: bandit -q -r detector tools/publish_mseed -x detector/tests -s B105
+        run: bandit -q -r detector locator tools/publish_mseed tools/replay_mseed -x detector/tests,locator/tests -s B105
 
       - name: C static analysis (cppcheck)
         run: |
