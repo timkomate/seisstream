@@ -16,6 +16,20 @@ def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return R * c
 
 
+def delta_degrees(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate angular great-circle separation in degrees."""
+    lat1_rad = np.radians(lat1)
+    lon1_rad = np.radians(lon1)
+    lat2_rad = np.radians(lat2)
+    lon2_rad = np.radians(lon2)
+    cos_delta = (
+        np.sin(lat1_rad) * np.sin(lat2_rad)
+        + np.cos(lat1_rad) * np.cos(lat2_rad) * np.cos(lon2_rad - lon1_rad)
+    )
+    cos_delta = np.clip(cos_delta, -1.0, 1.0)
+    return float(np.degrees(np.arccos(cos_delta)))
+
+
 def azimuth(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate azimuth from point 1 to point 2 in degrees (0-360)."""
     lat1_rad = np.radians(lat1)
