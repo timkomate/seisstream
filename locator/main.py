@@ -11,9 +11,10 @@ from locator.db import (
 )
 from locator.settings import parse_args
 from locator.solver import estimate_origin
+from locator.travel_time import build_travel_time_model
 
 
-def run_cycle(conn, settings, stations: dict, logger: logging.Logger):
+def run_cycle(conn, settings, stations: dict, logger: logging.Logger, travel_time_model):
     picks = fetch_recent_picks(conn, lookback_seconds=settings.lookback_seconds)
 
     if picks and any(pick.station_key not in stations for pick in picks):
@@ -33,7 +34,7 @@ def run_cycle(conn, settings, stations: dict, logger: logging.Logger):
         estimate = estimate_origin(
             event,
             stations=stations,
-            vp_km_s=settings.vp_km_s,
+            travel_time_model=travel_time_model,
             min_stations=settings.min_stations,
         )
         if estimate is None:
@@ -88,9 +89,25 @@ def main() -> None:
         return
 
     try:
+        travel_time_model = build_travel_time_model(
+            travel_time_model=settings.travel_time_model,
+            vp_km_s=settings.vp_km_s,
+            vs_km_s=settings.vs_km_s,
+            taup_model=settings.taup_model,
+            taup_p_phases=settings.taup_p_phases,
+            taup_s_phases=settings.taup_s_phases,
+        )
+        logger.info("Loaded travel-time model: backend=%s", travel_time_model.name)
+    except Exception:
+        logger.exception("Failed to initialize travel-time model")
+        return
+
+    try:
         while True:
             try:
-                stations, _metrics = run_cycle(conn, settings, stations, logger)
+                stations, _metrics = run_cycle(
+                    conn, settings, stations, logger, travel_time_model
+                )
             except Exception:
                 logger.exception("Locator cycle failed")
             time.sleep(settings.poll_seconds)
