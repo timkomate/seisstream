@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -88,7 +86,7 @@ def test_estimate_origin_recovers_synthetic_solution() -> None:
 
 
 def test_estimate_origin_uses_injected_travel_time_model() -> None:
-    origin_t = datetime.now(datetime.timezone.utc)
+    origin_t = datetime.now(timezone.utc)
     origin_lat = 47.5
     origin_lon = 19.05
     origin_depth = 8.0
