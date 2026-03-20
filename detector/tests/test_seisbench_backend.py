@@ -30,11 +30,16 @@ class _FakeModel:
         return self.classify_result
 
 
-def _install_fake_seisbench(monkeypatch, model: _FakeModel):
+def _install_fake_seisbench(
+    monkeypatch, model: _FakeModel, backup_hook=None, from_pretrained=None
+):
+    loader = from_pretrained or (lambda _name: model)
     models_module = SimpleNamespace(
-        EQTransformer=SimpleNamespace(from_pretrained=lambda _name: model)
+        EQTransformer=SimpleNamespace(from_pretrained=loader)
     )
-    seisbench_module = SimpleNamespace(models=models_module)
+    seisbench_module = SimpleNamespace(
+        models=models_module, use_backup_repository=backup_hook
+    )
     monkeypatch.setitem(sys.modules, "seisbench", seisbench_module)
     monkeypatch.setitem(sys.modules, "seisbench.models", models_module)
 
@@ -65,6 +70,50 @@ def test_init_falls_back_to_cpu_when_cuda_unavailable(monkeypatch):
     assert predictor.device == "cpu"
     assert model.device == "cpu"
     assert model.eval_called is True
+
+
+def test_init_retries_with_backup_repository_after_primary_failure(monkeypatch):
+    model = _FakeModel(in_samples=8)
+    calls = {"count": 0}
+    loader_attempts = {"count": 0}
+
+    def backup_hook():
+        calls["count"] += 1
+
+    def from_pretrained(_name):
+        loader_attempts["count"] += 1
+        if loader_attempts["count"] == 1:
+            raise ConnectionError("primary failed")
+        return model
+
+    _install_fake_seisbench(
+        monkeypatch,
+        model,
+        backup_hook=backup_hook,
+        from_pretrained=from_pretrained,
+    )
+
+    SeisBenchPredictor(SeisBenchConfig())
+
+    assert calls["count"] == 1
+    assert loader_attempts["count"] == 2
+
+
+def test_init_raises_runtime_error_when_backup_repository_is_unavailable(monkeypatch):
+    model = _FakeModel(in_samples=8)
+
+    def from_pretrained(_name):
+        raise ConnectionError("primary failed")
+
+    _install_fake_seisbench(
+        monkeypatch,
+        model,
+        backup_hook=None,
+        from_pretrained=from_pretrained,
+    )
+
+    with pytest.raises(ConnectionError, match="primary failed"):
+        SeisBenchPredictor(SeisBenchConfig())
 
 
 def test_build_multichannel_window_empty_segments(monkeypatch):
