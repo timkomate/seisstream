@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import main as locator_main
 from locator.models import Pick, Station
 from locator.settings import Settings
+from locator.travel_time import ConstantVelocityTravelTime
 
 
 class _DummyConn:
@@ -18,6 +19,7 @@ def test_run_cycle_persists_a_solved_event(monkeypatch) -> None:
         min_stations=4,
         min_pick_score=0.0,
         vp_km_s=6.0,
+        vs_km_s=3.5,
         max_residual_seconds=5.0,
     )
     logger = logging.getLogger("test.locator.main")
@@ -77,7 +79,16 @@ def test_run_cycle_persists_a_solved_event(monkeypatch) -> None:
         _fake_replace_origin_arrivals,
     )
 
-    updated_stations, metrics = locator_main.run_cycle(conn, settings, stations, logger)
+    updated_stations, metrics = locator_main.run_cycle(
+        conn,
+        settings,
+        stations,
+        logger,
+        ConstantVelocityTravelTime(
+            vp_km_s=settings.vp_km_s,
+            vs_km_s=settings.vs_km_s,
+        ),
+    )
 
     assert updated_stations == stations
     assert metrics["picks"] == 4
