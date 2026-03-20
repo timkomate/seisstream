@@ -141,13 +141,23 @@ services:
       - --lookback-seconds
       - ${LOCATOR_LOOKBACK_SECONDS:-600}
       - --association-window-seconds
-      - ${LOCATOR_ASSOCIATION_WINDOW_SECONDS:-8.0}
+      - ${LOCATOR_ASSOCIATION_WINDOW_SECONDS:-45.0}
       - --min-stations
       - ${LOCATOR_MIN_STATIONS:-4}
       - --min-pick-score
       - ${LOCATOR_MIN_PICK_SCORE:-0.0}
       - --vp-km-s
       - ${LOCATOR_VP_KM_S:-6.0}
+      - --vs-km-s
+      - ${LOCATOR_VS_KM_S:-3.5}
+      - --travel-time-model
+      - ${LOCATOR_TRAVEL_TIME_MODEL:-taup}
+      - --taup-model
+      - ${LOCATOR_TAUP_MODEL:-/app/locator/models/graczer_weber_prem_hybrid.npz}
+      - --taup-p-phases
+      - ${LOCATOR_TAUP_P_PHASES:-P,p}
+      - --taup-s-phases
+      - ${LOCATOR_TAUP_S_PHASES:-S,s}
       - --max-residual-seconds
       - ${LOCATOR_MAX_RESIDUAL_SECONDS:-3.0}
       - --pg-host
