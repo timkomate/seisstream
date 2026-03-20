@@ -5,6 +5,7 @@ import numpy as np
 
 from .geometry import azimuth, azimuthal_gap, compute_travel_time, haversine_distance
 from .models import ArrivalResidual, Event, OriginEstimate, Pick, Station
+from .travel_time import TravelTimeModel
 
 logger = logging.getLogger(__name__)
 
@@ -12,20 +13,18 @@ logger = logging.getLogger(__name__)
 def estimate_origin(
     event: Event,
     stations: dict[tuple[str, str, str], Station],
-    vp_km_s: float,
+    travel_time_model: TravelTimeModel,
     min_stations: int = 4,
-    max_depth_km: float = 80.0,
+    max_depth_km: float = 20.0,
     max_iterations: int = 30,
 ) -> OriginEstimate | None:
     logger.info(
-        "Starting origin estimation: association_key=%s picks=%d min_stations=%d vp_km_s=%.3f",
+        "Starting origin estimation: association_key=%s picks=%d min_stations=%d backend=%s",
         event.association_key,
         len(event.picks),
         min_stations,
-        vp_km_s,
+        travel_time_model.name,
     )
-    if vp_km_s <= 0:
-        raise ValueError("vp_km_s must be > 0")
     if min_stations < 3:
         raise ValueError("min_stations must be >= 3")
 
@@ -73,9 +72,14 @@ def estimate_origin(
     def residuals(params: np.ndarray) -> np.ndarray:
         lat, lon, depth_km, origin_epoch = params
         out: list[float] = []
-        for station, observed_epoch in zip(station_list, pick_epochs):
-            distance_km = haversine_distance(lat, lon, station.lat, station.lon)
-            tt_pred = compute_travel_time(distance_km, depth_km, vp_km_s)
+        for pick, station, observed_epoch in zip(picks, station_list, pick_epochs):
+            tt_pred = travel_time_model.predict(
+                lat,
+                lon,
+                station,
+                depth_km,
+                phase=pick.phase,
+            )
             out.append(observed_epoch - (origin_epoch + tt_pred))
         return np.asarray(out, dtype=float)
 
@@ -129,7 +133,13 @@ def estimate_origin(
     for pick, station, residual in zip(picks, station_list, final_residuals):
         distance_km = haversine_distance(lat, lon, station.lat, station.lon)
         az = azimuth(lat, lon, station.lat, station.lon)
-        tt_pred = compute_travel_time(distance_km, depth_km, vp_km_s)
+        tt_pred = travel_time_model.predict(
+            lat,
+            lon,
+            station,
+            depth_km,
+            phase=pick.phase,
+        )
         arrivals.append(
             ArrivalResidual(
                 pick=pick,

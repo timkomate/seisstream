@@ -95,3 +95,22 @@ class TauPTravelTime(TravelTimeModel):
             )
 
         return float(arrivals[0].time)
+
+
+def build_travel_time_model(
+    travel_time_model: str,
+    vp_km_s: float,
+    vs_km_s: float,
+    taup_model: str,
+    taup_p_phases: list[str] | tuple[str, ...],
+    taup_s_phases: list[str] | tuple[str, ...],
+) -> TravelTimeModel:
+    if travel_time_model == "constant":
+        return ConstantVelocityTravelTime(vp_km_s=vp_km_s, vs_km_s=vs_km_s)
+    if travel_time_model == "taup":
+        return TauPTravelTime(
+            model=taup_model,
+            p_phases=taup_p_phases,
+            s_phases=taup_s_phases,
+        )
+    raise ValueError(f"Unsupported travel time model: {travel_time_model}")
