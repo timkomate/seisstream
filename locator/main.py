@@ -14,7 +14,9 @@ from locator.solver import estimate_origin
 from locator.travel_time import build_travel_time_model
 
 
-def run_cycle(conn, settings, stations: dict, logger: logging.Logger, travel_time_model):
+def run_cycle(
+    conn, settings, stations: dict, logger: logging.Logger, travel_time_model
+):
     picks = fetch_recent_picks(conn, lookback_seconds=settings.lookback_seconds)
 
     if picks and any(pick.station_key not in stations for pick in picks):

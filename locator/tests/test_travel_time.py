@@ -54,9 +54,7 @@ def test_taup_builtin_model_predicts_p_and_s() -> None:
 
 def test_taup_custom_model_predicts_p() -> None:
     model_path = (
-        Path(__file__).resolve().parents[1]
-        / "models"
-        / "graczer_weber_prem_hybrid.npz"
+        Path(__file__).resolve().parents[1] / "models" / "graczer_weber_prem_hybrid.npz"
     )
     model = TauPTravelTime(
         model=str(model_path),

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-from .geometry import azimuth, azimuthal_gap, compute_travel_time, haversine_distance
+from .geometry import azimuth, azimuthal_gap, haversine_distance
 from .models import ArrivalResidual, Event, OriginEstimate, Pick, Station
 from .travel_time import TravelTimeModel
 
