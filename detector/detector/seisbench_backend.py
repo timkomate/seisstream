@@ -26,17 +26,33 @@ class SeisBenchPredictor:
     def __init__(self, config: SeisBenchConfig):
         self.config = config
 
+        import seisbench
         import seisbench.models as sbm
 
         model_class = config.model_class.lower()
-        if model_class == "eqtransformer":
-            self.model = sbm.EQTransformer.from_pretrained(config.pretrained)
-        else:
+        if model_class != "eqtransformer":
             raise ValueError(
                 f"Unsupported SeisBench model_class='{config.model_class}'. "
                 "Only 'eqtransformer' is supported."
             )
 
+        use_backup_repository = getattr(seisbench, "use_backup_repository", None)
+        try:
+            self.model = sbm.EQTransformer.from_pretrained(config.pretrained)
+        except Exception:
+            logger.warning(
+                "Primary SeisBench repository load failed for pretrained=%s. Retrying with backup repository",
+                config.pretrained,
+            )
+            try:
+                use_backup_repository()
+            except TypeError:
+                logger.warning(
+                    "SeisBench backup repository hook is unavailable for pretrained=%s",
+                    config.pretrained,
+                )
+            self.model = sbm.EQTransformer.from_pretrained(config.pretrained)
+            logger.info("Loaded SeisBench model using the backup repository")
         # Most SeisBench models expose a fixed in_samples.
         self.input_samples = int(getattr(self.model, "in_samples", 0) or 0)
         if self.input_samples <= 0:

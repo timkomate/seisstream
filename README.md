@@ -93,7 +93,7 @@ Prerequisites:
    ```
 
 Notes:
-- Detector image build can take significantly longer than connector/consumer because it installs heavy ML dependencies (`torch`, CUDA-related packages).
+- Detector image build can take significantly longer than connector/consumer because it installs heavy ML dependencies such as `torch` and `seisbench`.
 - Validate rendered compose config with:
   ```sh
   docker compose config
@@ -171,7 +171,7 @@ The Docker setup uses these environment variable groups:
 - AMQP routing: `AMQP_EXCHANGE`, `CONSUMER_AMQP_BINDING_KEY`, `DETECTOR_AMQP_BINDING_KEY`
 - SeedLink source: `SEEDLINK_HOST`
 - Detector runtime: `DETECTOR_MODE`, `DETECTOR_SB_PRETRAINED`
-- Locator runtime: `LOCATOR_POLL_SECONDS`, `LOCATOR_LOOKBACK_SECONDS`, `LOCATOR_ASSOCIATION_WINDOW_SECONDS`, `LOCATOR_MIN_STATIONS`, `LOCATOR_MIN_PICK_SCORE`, `LOCATOR_VP_KM_S`, `LOCATOR_MAX_RESIDUAL_SECONDS`, `LOCATOR_LOG_LEVEL`
+- Locator runtime: `LOCATOR_POLL_SECONDS`, `LOCATOR_LOOKBACK_SECONDS`, `LOCATOR_ASSOCIATION_WINDOW_SECONDS`, `LOCATOR_MIN_STATIONS`, `LOCATOR_MIN_PICK_SCORE`, `LOCATOR_VP_KM_S`, `LOCATOR_VS_KM_S`, `LOCATOR_TRAVEL_TIME_MODEL`, `LOCATOR_TAUP_MODEL`, `LOCATOR_TAUP_P_PHASES`, `LOCATOR_TAUP_S_PHASES`, `LOCATOR_MAX_RESIDUAL_SECONDS`, `LOCATOR_LOG_LEVEL`
 - Grafana admin: `GRAFANA_USER`, `GRAFANA_PASSWORD`
 
 Template (`.env.example`):
@@ -204,6 +204,11 @@ LOCATOR_ASSOCIATION_WINDOW_SECONDS=8.0
 LOCATOR_MIN_STATIONS=4
 LOCATOR_MIN_PICK_SCORE=0.0
 LOCATOR_VP_KM_S=6.0
+LOCATOR_VS_KM_S=3.5
+LOCATOR_TRAVEL_TIME_MODEL=taup
+LOCATOR_TAUP_MODEL=/app/locator/models/graczer_weber_prem_hybrid.npz
+LOCATOR_TAUP_P_PHASES=P,p
+LOCATOR_TAUP_S_PHASES=S,s
 LOCATOR_MAX_RESIDUAL_SECONDS=3.0
 LOCATOR_LOG_LEVEL=INFO
 
