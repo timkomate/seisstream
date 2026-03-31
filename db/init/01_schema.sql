@@ -20,14 +20,15 @@ CREATE INDEX IF NOT EXISTS seismic_samples_station_ts_idx
 SELECT add_retention_policy('seismic_samples', INTERVAL '3 days');
 
 CREATE TABLE IF NOT EXISTS phase_picks (
-  id bigserial,
+  id bigserial PRIMARY KEY,
   ts timestamptz NOT NULL,
   phase text NOT NULL,
   score double precision,
   net text NOT NULL,
   sta text NOT NULL,
   loc text NOT NULL,
-  chan text NOT NULL
+  chan text NOT NULL,
+  method text NOT NULL DEFAULT 'automatic'
 );
 
 SELECT create_hypertable('phase_picks', 'ts',
@@ -37,13 +38,16 @@ SELECT create_hypertable('phase_picks', 'ts',
 CREATE INDEX IF NOT EXISTS phase_picks_station_ts_idx
   ON phase_picks (net, sta, loc, chan, ts DESC);
 
+CREATE INDEX IF NOT EXISTS phase_picks_method_ts_idx
+  ON phase_picks (method, ts DESC);
+
 CREATE UNIQUE INDEX IF NOT EXISTS phase_picks_unique_idx
   ON phase_picks (net, sta, loc, chan, ts, phase);
 
 ALTER TABLE phase_picks
   SET (
     timescaledb.compress,
-    timescaledb.compress_segmentby = 'net,sta,loc,chan,phase'
+    timescaledb.compress_segmentby = 'net,sta,loc,chan,phase,method'
   );
 
 SELECT add_compression_policy('phase_picks', INTERVAL '7 days');

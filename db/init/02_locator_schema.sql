@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS stations (
   loc text NOT NULL DEFAULT '',
   lat double precision NOT NULL,
   lon double precision NOT NULL,
-  elev_m double precision NOT NULL DEFAULT 0,
+  elev_m double precision,
   PRIMARY KEY (net, sta, loc)
 );
 
@@ -19,13 +19,14 @@ CREATE TABLE IF NOT EXISTS origins (
   n_picks integer NOT NULL,
   n_stations integer NOT NULL,
   status text NOT NULL DEFAULT 'preliminary',
+  method text NOT NULL DEFAULT 'automatic',
   association_key text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS origins_association_key_uidx
-  ON origins (association_key);
+CREATE UNIQUE INDEX IF NOT EXISTS origins_association_key_automatic_uidx
+  ON origins (association_key)
 
 CREATE INDEX IF NOT EXISTS origins_time_idx
   ON origins (origin_ts DESC);
