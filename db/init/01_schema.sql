@@ -20,7 +20,7 @@ CREATE INDEX IF NOT EXISTS seismic_samples_station_ts_idx
 SELECT add_retention_policy('seismic_samples', INTERVAL '3 days');
 
 CREATE TABLE IF NOT EXISTS phase_picks (
-  id bigserial PRIMARY KEY,
+  id bigserial,
   ts timestamptz NOT NULL,
   phase text NOT NULL,
   score double precision,

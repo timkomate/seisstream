@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS origins (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS origins_association_key_automatic_uidx
-  ON origins (association_key)
+  ON origins (association_key);
 
 CREATE INDEX IF NOT EXISTS origins_time_idx
   ON origins (origin_ts DESC);
