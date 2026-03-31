@@ -24,38 +24,33 @@ def serve_layout():
                 [
                     html.Div(
                         [
-                            html.Label("Stations"),
-                            dcc.Dropdown(id="station-select", multi=True),
-                            html.Label("Channels", style={"marginTop": "12px", "display": "block"}),
-                            dcc.Dropdown(id="channel-select", multi=True),
-                            html.Button(
-                                "Load Latest Window",
-                                id="load-window",
-                                n_clicks=0,
-                                style={
-                                    "marginTop": "12px",
-                                    "borderRadius": "999px",
-                                    "padding": "10px 16px",
-                                    "border": "none",
-                                    "background": "#1f4d4f",
-                                    "color": "white",
-                                },
+                            html.Div(
+                                [
+                                    html.Label("Stations", style={"fontWeight": "600", "display": "block", "marginBottom": "6px"}),
+                                    dcc.Dropdown(id="station-select", multi=True),
+                                ],
+                                style={"minWidth": "260px", "flex": "2 1 360px"},
                             ),
-                            html.Button(
-                                "Reset Window",
-                                id="reset-window",
-                                n_clicks=0,
-                                style={
-                                    "marginTop": "10px",
-                                    "borderRadius": "999px",
-                                    "padding": "10px 16px",
-                                    "border": "1px solid #1f4d4f",
-                                    "background": "transparent",
-                                    "color": "#1f4d4f",
-                                },
+                            html.Div(
+                                [
+                                    html.Label("Channels", style={"fontWeight": "600", "display": "block", "marginBottom": "6px"}),
+                                    dcc.Dropdown(id="channel-select", multi=True),
+                                ],
+                                style={"minWidth": "220px", "flex": "1 1 240px"},
+                            ),
+                            html.Div(
+                                [],
+                                style={"display": "none"},
                             ),
                         ],
-                        style={**card, "position": "sticky", "top": "24px"},
+                        style={
+                            **card,
+                            "display": "flex",
+                            "gap": "16px",
+                            "alignItems": "end",
+                            "flexWrap": "wrap",
+                            "marginBottom": "18px",
+                        },
                     ),
                     html.Div(
                         [
@@ -66,18 +61,13 @@ def serve_layout():
                                     "responsive": True,
                                     "scrollZoom": True,
                                 },
-                                style={"height": "70vh"},
+                                style={"height": "72vh"},
                             )
                         ],
-                        style={"minWidth": "0", **card},
+                        style={**card, "width": "100%"},
                     ),
                 ],
-                style={
-                    "display": "grid",
-                    "gap": "18px",
-                    "gridTemplateColumns": "320px minmax(0, 1fr)",
-                    "alignItems": "start",
-                },
+                style={"display": "block"},
             ),
             html.Div(
                 [
