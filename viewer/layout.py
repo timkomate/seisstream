@@ -13,6 +13,14 @@ def serve_layout():
     return html.Div(
         [
             dcc.Store(id="viewer-window"),
+            dcc.Store(id="viewer-pending-window"),
+            dcc.Interval(
+                id="viewer-window-debounce",
+                interval=250,
+                n_intervals=0,
+                disabled=True,
+                max_intervals=1,
+            ),
             html.Div(
                 [
                     html.H1("SeisStream Viewer", style={"marginBottom": "4px"}),
