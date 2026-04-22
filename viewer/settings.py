@@ -12,8 +12,6 @@ class ViewerSettings:
     pg_password: str = os.getenv("PGPASSWORD", "seis")
     pg_dbname: str = os.getenv("PGDATABASE", "seismic")
     default_window_seconds: int = int(os.getenv("VIEWER_DEFAULT_WINDOW_SECONDS", "60"))
-    max_samples_per_trace: int = int(os.getenv("VIEWER_MAX_SAMPLES_PER_TRACE", "3000"))
 
 
 SETTINGS = ViewerSettings()
-
